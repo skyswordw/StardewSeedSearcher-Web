@@ -41,10 +41,6 @@ npm run build
 
 构建产物会输出到 `dist/`。
 
-## 一键部署
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/skyswordw/StardewSeedSearcher-Web)
-
 ## 常用命令
 
 ```bash
