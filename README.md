@@ -43,6 +43,8 @@ npm run dotnet:install
 npm run dotnet:local -- --info
 npm run fixtures:generate
 npm run fixtures:check
+npm run parity:sample:ci
+npm run parity:sample -- --seed 20260616 --cases 500 --window 2000
 npm run bench:search -- --scenario weather-default-1m --range 1000 --repeat 1
 ```
 
@@ -58,6 +60,7 @@ npm run typecheck
 npm run lint
 npm run test
 npm run fixtures:check
+npm run parity:sample:ci
 npm run build
 npm run test:e2e -- --project=chromium
 ```
@@ -66,7 +69,7 @@ CI 会安装 Playwright Chromium 及系统依赖。e2e 失败时会上传 `playw
 
 ## Oracle / Parity
 
-`src/search-core` 已按 TDD 方式建立 TypeScript 搜索核心和 C# oracle golden matrix 测试，覆盖 `.NET Random`、Stardew hash helper、日期转换、天气、仙子、矿井宝箱、矿井怪物层、沙漠节、猪车、新旧随机模式和组合搜索输出。
+`src/search-core` 已按 TDD 方式建立 TypeScript 搜索核心和 C# oracle parity 测试，覆盖 `.NET Random`、Stardew hash helper、日期转换、天气、仙子、矿井宝箱、矿井怪物层、沙漠节、猪车、新旧随机模式和组合搜索输出。
 
 为避免污染全局环境，oracle 使用仓库内隔离的 .NET SDK、NuGet cache 和 dotnet home：
 
@@ -83,7 +86,7 @@ tools/oracle/upstream/
 npm run fixtures:generate
 ```
 
-生成的 golden fixture 位于 `src/search-core/__fixtures__/oracle-sample.json`，Vitest 会按数据驱动 case 比较 TypeScript 输出和 C# oracle 输出。
+生成的 golden fixture 位于 `src/search-core/__fixtures__/oracle-sample.json`，Vitest 会按数据驱动 case 比较 TypeScript 输出和 C# oracle 输出。golden fixture 是一组固定、人工挑选的确定性矩阵，用来覆盖核心边界和已知代表场景。
 
 常用 oracle check：
 
@@ -94,6 +97,30 @@ npm run test -- src/search-core/search.test.ts
 ```
 
 `fixtures:check` 会在临时位置重新生成 oracle JSON 并和已提交 fixture 比较，CI 用它防止手工改动或 fixture 漂移。如果更新了 oracle fixture，应确认差异只来自预期的搜索规则或 fixture 样本变更。
+
+随机 parity sampling 是另一层覆盖：它用固定 RNG seed 生成可复现的随机 `SearchRequest`，同一批请求分别交给 TypeScript search-core 和 pinned C# oracle 执行，然后比较 found seed 列表和 found seed details。当前 sampler 覆盖天气、仙子、矿井宝箱、矿井怪物层、沙漠节、猪车、新旧随机模式、单功能和混合功能请求。
+
+CI 轻量 gate：
+
+```bash
+npm run parity:sample:ci
+# 等价于：
+npm run parity:sample -- --seed 20260616 --cases 50 --window 2000
+```
+
+本地 release gate 可提高样本数：
+
+```bash
+npm run parity:sample -- --seed 20260616 --cases 500 --window 2000
+```
+
+如果 sampling 失败，输出会包含 sampler seed、case index、生成的 request JSON、TS result 和 C# oracle result。可用下面的命令复现单个失败 case：
+
+```bash
+npm run parity:sample -- --seed 20260616 --case-index 17 --window 2000
+```
+
+random sampling 能提高统计信心，但不是对全部 seed 和全部条件组合的数学穷举证明。
 
 ## Benchmark / Smoke Check
 

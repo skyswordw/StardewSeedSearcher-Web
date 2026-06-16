@@ -1,101 +1,26 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { spawnSync } from 'node:child_process'
+import {
+  dotnet,
+  ensureDir,
+  ensureDotnet,
+  ensureUpstream,
+  output,
+  prepareOracleProject,
+  root,
+  upstreamDir,
+} from './oracle-env.mjs'
 
-const root = resolve(import.meta.dirname, '../..')
-const dotnetDir = resolve(root, '.dotnet')
-const dotnet = resolve(dotnetDir, 'dotnet')
-const upstreamDir = resolve(root, 'tools/oracle/upstream/StardewSeedSearcher')
 const fixturePath = resolve(root, 'src/search-core/__fixtures__/oracle-sample.json')
-const upstreamUrl = 'https://github.com/CuiYinYin2023/StardewSeedSearcher.git'
-const upstreamCommit = '0e7d0df08f14f2c342747ca9a22c90d8edc9d892'
 const checkMode = process.argv.includes('--check')
 
-function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
-    cwd: root,
-    stdio: 'inherit',
-    env: dotnetEnv(),
-    ...options,
-  })
-  if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(' ')} failed with exit code ${result.status}`)
-  }
-}
-
-function output(command, args, options = {}) {
-  const result = spawnSync(command, args, {
-    cwd: root,
-    encoding: 'utf8',
-    env: dotnetEnv(),
-    ...options,
-  })
-  if (result.status !== 0) {
-    process.stderr.write(result.stderr)
-    throw new Error(`${command} ${args.join(' ')} failed with exit code ${result.status}`)
-  }
-  return result.stdout
-}
-
-function dotnetEnv() {
-  return {
-    ...process.env,
-    DOTNET_ROOT: dotnetDir,
-    DOTNET_CLI_HOME: resolve(root, '.dotnet-home'),
-    DOTNET_NOLOGO: '1',
-    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1',
-    DOTNET_CLI_TELEMETRY_OPTOUT: '1',
-    DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false',
-    NUGET_PACKAGES: resolve(root, '.nuget/packages'),
-    PATH: `${dotnetDir}:${process.env.PATH ?? ''}`,
-  }
-}
-
-function ensureDir(path) {
-  mkdirSync(path, { recursive: true })
-}
-
-function ensureDotnet() {
-  if (!existsSync(dotnet)) {
-    run(process.execPath, ['tools/oracle/install-dotnet.mjs'])
-  }
-}
-
-function ensureUpstream() {
-  if (existsSync(resolve(upstreamDir, '.git'))) {
-    run('git', ['fetch', '--depth', '1', 'origin', upstreamCommit], { cwd: upstreamDir })
-    run('git', ['checkout', '--detach', upstreamCommit], { cwd: upstreamDir })
-    return
-  }
-
-  const tmpClone = '/tmp/codex-stardew-seed-searcher'
-  if (existsSync(resolve(tmpClone, '.git'))) {
-    ensureDir(dirname(upstreamDir))
-    rmSync(upstreamDir, { recursive: true, force: true })
-    run('git', ['clone', '--depth', '1', 'file:///tmp/codex-stardew-seed-searcher', upstreamDir])
-    run('git', ['fetch', '--depth', '1', 'origin', upstreamCommit], { cwd: upstreamDir })
-    run('git', ['checkout', '--detach', upstreamCommit], { cwd: upstreamDir })
-    return
-  }
-
-  ensureDir(dirname(upstreamDir))
-  run('git', ['clone', '--depth', '1', upstreamUrl, upstreamDir])
-  run('git', ['fetch', '--depth', '1', 'origin', upstreamCommit], { cwd: upstreamDir })
-  run('git', ['checkout', '--detach', upstreamCommit], { cwd: upstreamDir })
-}
-
 function patchProject() {
-  const projectPath = resolve(upstreamDir, 'StardewSeedSearcher/StardewSeedSearcher.csproj')
-  const original = readFileSync(projectPath, 'utf8')
-  const patched = original.replace(
-    '<StartupObject>StardewSeedSearcher.ProgramWeb</StartupObject>',
-    '<StartupObject>StardewSeedSearcher.OracleFixtureRunner</StartupObject>',
+  prepareOracleProject(
+    'StardewSeedSearcher.OracleFixtureRunner',
+    'OracleFixtureRunner.cs',
+    oracleRunnerSource,
   )
-  writeFileSync(projectPath, patched)
-
-  const runnerPath = resolve(upstreamDir, 'StardewSeedSearcher/OracleFixtureRunner.cs')
-  writeFileSync(runnerPath, oracleRunnerSource)
 }
 
 function generateFixtureJson() {
