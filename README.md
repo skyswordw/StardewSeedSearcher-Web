@@ -1,52 +1,48 @@
 # StardewSeedSearcher Web
 
-An unofficial, browser-only Web port of
-[CuiYinYin2023/StardewSeedSearcher](https://github.com/CuiYinYin2023/StardewSeedSearcher)
-for finding Stardew Valley world seeds that match specific early-game conditions.
+星露谷物语种子搜索器的非官方 Web 版。打开网页，设置筛选条件，就可以直接搜索符合目标事件的世界种子；普通使用不需要下载桌面程序，也不需要配置本地环境。
 
-Open the Web page, set the seed filters, and start searching. No extra download or local setup is needed for normal use.
+基于 [CuiYinYin2023/StardewSeedSearcher](https://github.com/CuiYinYin2023/StardewSeedSearcher) 移植，保留原项目 MIT License 与原作者版权声明。本项目不隶属于原作者，也不代表原项目官方维护版本。
 
-> This project is not affiliated with, endorsed by, or maintained by the upstream author. Upstream copyright and MIT License notices are preserved.
+## 功能亮点
 
-## What it does
+- 在网页中直接搜索 Stardew Valley 世界种子。
+- 支持天气、仙子、混合矿井宝箱、怪物层、沙漠节商人、猪车等筛选条件。
+- 显示搜索进度、速度、筛选通过数量和提前停止状态。
+- 支持停止搜索、查看种子详情、复制种子号和导出结果。
+- 提供中文和英文界面。
+- 可作为静态站点部署到 GitHub Pages、Cloudflare Pages、Vercel 或其他静态托管平台。
 
-- Search world seeds directly in the browser.
-- Filter by weather, crop fairy, mixed mine chests, monster floors, Desert Festival vendors, and traveling cart entries.
-- Show progress, speed, per-filter pass counts, and whether the search stopped early because the output limit was reached.
-- Stop an active search, inspect seed details, copy seed numbers, or export results.
-- Use Chinese or English UI copy.
-- Deploy as a static Vite site on GitHub Pages, Cloudflare Pages, Vercel, or any static host.
+## 当前范围
 
-## Current baseline
-
-| Area | Status |
+| 项目 | 说明 |
 | --- | --- |
-| Upstream source | `CuiYinYin2023/StardewSeedSearcher` |
-| Baseline | `V1.0 / 0e7d0df08f14f2c342747ca9a22c90d8edc9d892` |
-| Stardew Valley target | `1.6.15` |
-| Result targets | PC / Android / iOS |
-| Switch JKISS random logic | Not included in the first Web release |
+| 上游来源 | `CuiYinYin2023/StardewSeedSearcher` |
+| 移植基线 | `V1.0` |
+| 星露谷版本 | `1.6.15` |
+| 结果平台 | PC / Android / iOS |
+| Switch JKISS 随机逻辑 | 暂不包含在首版范围 |
 
-## Quick start
+## 快速开始
 
-Use Node 22 from `.node-version`.
+本项目使用 `.node-version` 指定的 Node 22。
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the Vite URL printed by the dev server, usually `http://localhost:5173`.
+开发服务器启动后，打开终端输出的 Vite 地址，通常是 `http://localhost:5173`。
 
-For a production build:
+生产构建：
 
 ```bash
 npm run build
 ```
 
-The static output is written to `dist/`.
+构建产物会输出到 `dist/`。
 
-## Common commands
+## 常用命令
 
 ```bash
 npm run typecheck
@@ -59,7 +55,7 @@ npm run parity:sample -- --seed 20260616 --cases 500 --window 2000
 npm run bench:search -- --scenario weather-default-1m --repeat 5
 ```
 
-When changing deterministic search behavior, regenerate and review oracle fixtures:
+如果修改了确定性搜索逻辑，建议重新生成并检查 oracle fixture：
 
 ```bash
 npm run fixtures:generate
@@ -67,25 +63,25 @@ npm run fixtures:check
 npm run test -- src/search-core/search.test.ts
 ```
 
-## Project layout
+## 项目结构
 
 ```text
-src/App.tsx                 Main React UI
-src/App.css                 App styling
-src/search.worker.ts        Browser Web Worker entrypoint
-src/search-core/            Deterministic search logic, predictors, fixtures, tests
-src/assets/                 Bundled UI images
-e2e/                        Playwright functional and visual audit tests
-tools/oracle/               C# upstream fixture generation tooling
-tools/bench/                Search benchmark scenarios
-public/upstream/            Upstream license and README snapshots
+src/App.tsx                 主界面
+src/App.css                 页面样式
+src/search.worker.ts        浏览器搜索任务入口
+src/search-core/            确定性搜索逻辑、预测器、fixture 和测试
+src/assets/                 应用内图片资源
+e2e/                        Playwright 功能和视觉测试
+tools/oracle/               C# 上游 oracle fixture 工具
+tools/bench/                搜索性能 benchmark 场景
+public/upstream/            上游 license 与 README 快照
 ```
 
-## Search-core parity
+## 搜索一致性校验
 
-`src/search-core` is covered by Vitest tests and a C# oracle golden matrix. The fixture suite covers `.NET Random`, Stardew hash helpers, date conversion, weather, crop fairy, mine chests, monster floors, Desert Festival vendors, traveling cart behavior, legacy random mode, and combined search output.
+`src/search-core` 使用 Vitest 和 C# oracle golden matrix 做一致性测试，覆盖 `.NET Random`、Stardew hash helper、日期转换、天气、仙子、矿井宝箱、怪物层、沙漠节商人、猪车、旧随机模式和组合搜索输出。
 
-Oracle tooling intentionally uses repo-local caches so it does not modify the global machine setup:
+oracle 工具使用仓库内隔离缓存，避免污染全局环境：
 
 ```text
 .dotnet/
@@ -94,35 +90,35 @@ Oracle tooling intentionally uses repo-local caches so it does not modify the gl
 tools/oracle/upstream/
 ```
 
-These paths are ignored by git. `npm run fixtures:generate` downloads the required .NET SDK into `.dotnet/`, prepares upstream source under `tools/oracle/upstream/StardewSeedSearcher`, runs a temporary C# fixture runner, and writes `src/search-core/__fixtures__/oracle-sample.json`.
+这些路径已被 git 忽略。`npm run fixtures:generate` 会下载所需 .NET SDK、准备上游源码、运行临时 C# fixture runner，并写入 `src/search-core/__fixtures__/oracle-sample.json`。
 
-The committed golden fixture is a fixed, hand-picked deterministic matrix for core edges and known representative scenarios. Random parity sampling adds another layer: it uses a fixed RNG seed to generate reproducible random `SearchRequest` cases, runs each case through both the TypeScript search core and pinned C# oracle, then compares found seed lists and found seed details. The sampler currently covers weather, crop fairy, mine chests, monster floors, Desert Festival vendors, traveling cart, legacy random mode, single-feature requests, and mixed-feature requests.
+固定 golden fixture 用来覆盖核心边界和代表场景。随机 parity sampling 则使用固定 RNG seed 生成可复现的随机 `SearchRequest`，分别交给 TypeScript search core 和 pinned C# oracle 执行，再比较 found seed 列表和详情。
 
-CI runs a lightweight sampler gate:
+CI 中的轻量 sampling：
 
 ```bash
 npm run parity:sample:ci
-# equivalent to:
+# 等价于：
 npm run parity:sample -- --seed 20260616 --cases 50 --window 2000
 ```
 
-For release checks, increase the sample count locally:
+发布前可以提高本地样本数：
 
 ```bash
 npm run parity:sample -- --seed 20260616 --cases 500 --window 2000
 ```
 
-If sampling fails, the output includes the sampler seed, case index, generated request JSON, TypeScript result, and C# oracle result. Reproduce one failed case with:
+如果 sampling 失败，输出会包含 sampler seed、case index、request JSON、TypeScript result 和 C# oracle result。可以用下面的命令复现单个失败 case：
 
 ```bash
 npm run parity:sample -- --seed 20260616 --case-index 17 --window 2000
 ```
 
-Random sampling improves parity confidence, but it is not an exhaustive proof over every seed and condition combination.
+随机 sampling 能提升一致性信心，但不是对所有 seed 和所有条件组合的穷举证明。
 
-## CI and deployment
+## CI 与部署
 
-GitHub CI is defined in `.github/workflows/ci.yml` and runs:
+GitHub CI 位于 `.github/workflows/ci.yml`，会运行：
 
 ```bash
 npm ci
@@ -135,11 +131,11 @@ npm run build
 npm run test:e2e -- --project=chromium
 ```
 
-GitHub Pages publishing is defined in `.github/workflows/pages.yml`. It sets `VITE_BASE_PATH=/StardewSeedSearcher-Web/`, builds the app, and deploys `dist/`. Other static hosts can use `npm run build` with output directory `dist`; set `VITE_BASE_PATH` only when deploying under a subpath.
+GitHub Pages 发布流程位于 `.github/workflows/pages.yml`。该流程设置 `VITE_BASE_PATH=/StardewSeedSearcher-Web/`，构建项目并部署 `dist/`。如果部署到其他子路径静态站点，也需要设置对应的 `VITE_BASE_PATH`。
 
-## Benchmark smoke checks
+## Benchmark / Smoke Check
 
-Before release, run at least the main benchmark scenarios plus a browser smoke check:
+发布前建议至少跑主场景 benchmark 和一次浏览器 smoke check：
 
 ```bash
 npm run bench:search -- --scenario weather-default-1m --repeat 5
@@ -150,7 +146,7 @@ npm run build
 npm run test:e2e -- --project=chromium
 ```
 
-The browser currently uses one Web Worker. If a worker pool is added later, preserve result order, `outputLimit`, cancellation semantics, and monotonic progress reporting.
+当前浏览器搜索运行在单个 Web Worker 中。若后续引入 worker pool，必须保持结果顺序、`outputLimit`、取消语义和进度单调性。
 
 ## Attribution
 
@@ -160,3 +156,49 @@ The browser currently uses one Web Worker. If a worker pool is added later, pres
 - Upstream README snapshot: `public/upstream/StardewSeedSearcher.README.md`
 
 This project is released under the MIT License. The upstream copyright notice is preserved in `LICENSE`.
+
+---
+
+## English
+
+StardewSeedSearcher Web is an unofficial browser version of a Stardew Valley seed searcher. Open the page, set the filters, and search for world seeds that match the events you want. Normal use does not require downloading a desktop app or setting up a local environment.
+
+It is ported from [CuiYinYin2023/StardewSeedSearcher](https://github.com/CuiYinYin2023/StardewSeedSearcher), with the upstream MIT License and copyright notices preserved. This project is not affiliated with or maintained by the upstream author.
+
+### Features
+
+- Search Stardew Valley world seeds directly in the browser.
+- Filter by weather, crop fairy, mixed mine chests, monster floors, Desert Festival vendors, and traveling cart entries.
+- Track progress, speed, per-filter pass counts, and early-stop state.
+- Stop a running search, inspect seed details, copy seed numbers, and export results.
+- Use Chinese or English UI copy.
+- Deploy as a static Vite site on GitHub Pages, Cloudflare Pages, Vercel, or any static host.
+
+### Development
+
+Use Node 22 from `.node-version`.
+
+```bash
+npm install
+npm run dev
+```
+
+Common validation commands:
+
+```bash
+npm run typecheck
+npm run lint
+npm run test
+npm run fixtures:check
+npm run parity:sample:ci
+npm run build
+npm run test:e2e -- --project=chromium
+```
+
+For deterministic search changes, regenerate and review oracle fixtures:
+
+```bash
+npm run fixtures:generate
+npm run fixtures:check
+npm run test -- src/search-core/search.test.ts
+```
