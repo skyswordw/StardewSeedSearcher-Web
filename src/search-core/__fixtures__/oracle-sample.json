@@ -1,0 +1,177 @@
+{
+  "meta": {
+    "source": "CuiYinYin2023/StardewSeedSearcher",
+    "commit": "0e7d0df08f14f2c342747ca9a22c90d8edc9d892",
+    "generatedBy": "tools/oracle/generate-fixtures.mjs"
+  },
+  "primitives": {
+    "randomSeed1Next": [
+      534011718,
+      237820880,
+      1002897798,
+      1657007234,
+      1412011072,
+      929393559,
+      760389092,
+      2026928803,
+      217468053,
+      1379662799
+    ],
+    "randomSeed1Range2To31": [
+      9,
+      5,
+      15,
+      24,
+      21,
+      14,
+      12,
+      29
+    ],
+    "hashes": {
+      "location_weather": -1513201250,
+      "summer_rain_chance": -309161378,
+      "travelerSkillBook": -451051273,
+      "array_777_1_0_0_0": 163044321,
+      "randomSeedNew_777_1_0_0_0": 163044321,
+      "randomSeedLegacy_777_1_0_0_0": 778
+    },
+    "dates": {
+      "y1Spring1": 1,
+      "y1Fall28": 84,
+      "y2Spring1": 113,
+      "abs84": {
+        "year": 1,
+        "season": 2,
+        "day": 28
+      },
+      "abs113": {
+        "year": 2,
+        "season": 0,
+        "day": 1
+      }
+    }
+  },
+  "predictors": {
+    "weatherSeed1New": {
+      "springRain": [
+        3,
+        8,
+        16
+      ],
+      "summerRain": [
+        5,
+        7,
+        8,
+        13,
+        21,
+        23,
+        24,
+        26
+      ],
+      "fallRain": [
+        6,
+        12,
+        14,
+        18,
+        22,
+        26
+      ],
+      "greenRainDay": 7
+    },
+    "weatherSeed1Legacy": {
+      "springRain": [
+        3,
+        6,
+        8,
+        23,
+        25,
+        27
+      ],
+      "summerRain": [
+        3,
+        5,
+        6,
+        7,
+        13,
+        22,
+        24,
+        26
+      ],
+      "fallRain": [
+        13,
+        15,
+        17,
+        19
+      ],
+      "greenRainDay": 6
+    },
+    "mineChestSeed1Floor10New": [
+      {
+        "floor": 10,
+        "item": "\u5DE5\u4F5C\u9774",
+        "matched": false
+      }
+    ],
+    "mineChestSeed1Floor10Legacy": [
+      {
+        "floor": 10,
+        "item": "\u6728\u5251",
+        "matched": false
+      }
+    ],
+    "desertFestivalSeed1New": {
+      "day15": [
+        "Jodi",
+        "Emily"
+      ],
+      "day16": [
+        "Evelyn",
+        "Emily"
+      ],
+      "day17": [
+        "Abigail",
+        "Pam"
+      ]
+    },
+    "desertFestivalSeed1Legacy": {
+      "day15": [
+        "Harvey",
+        "Jodi"
+      ],
+      "day16": [
+        "Leah",
+        "Shane"
+      ],
+      "day17": [
+        "Sebastian",
+        "Caroline"
+      ]
+    },
+    "fairySeed1New": {
+      "days": []
+    },
+    "monsterLevelSeed1New": [
+      {
+        "description": "\u66255 1-40\u5C42\u65E0\u602A\u7269\u5C42",
+        "satisfied": true,
+        "absoluteStartDay": 5
+      }
+    ],
+    "cartSeed1New": {
+      "itemName": "\u91CE\u5C71\u8475",
+      "matches": []
+    }
+  },
+  "searches": {
+    "weatherSpringRain4Seeds1To500New": [
+      3,
+      4,
+      5
+    ],
+    "weatherSpringRain4Seeds1To500Legacy": [
+      1,
+      2,
+      3
+    ]
+  }
+}
