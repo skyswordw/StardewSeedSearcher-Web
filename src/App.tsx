@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import './App.css'
 import logo from './assets/logo.png'
+import { copyTextToClipboard, createJobId, randomInt } from './browserCompat'
 import {
   allCartItemNames,
   formatGameDate,
@@ -158,7 +159,7 @@ function App() {
     const request = buildRequest()
     const worker = workerRef.current ?? new Worker(new URL('./search.worker.ts', import.meta.url), { type: 'module' })
     workerRef.current = worker
-    const jobId = crypto.randomUUID()
+    const jobId = createJobId()
     activeJobId.current = jobId
     savedStartSeed.current = startSeed
 
@@ -190,9 +191,7 @@ function App() {
   }
 
   function setRandomStartSeed() {
-    const buffer = new Uint32Array(1)
-    crypto.getRandomValues(buffer)
-    setStartSeed((buffer[0] % 1_000_000_000) + 1)
+    setStartSeed(randomInt(1_000_000_000) + 1)
   }
 
   function handleWorkerMessage(message: SearchMessage & { message?: string }, request: SearchRequest) {
@@ -250,12 +249,15 @@ function App() {
     const link = document.createElement('a')
     link.href = url
     link.download = `stardew-seeds-${Date.now()}.txt`
+    document.body.appendChild(link)
     link.click()
-    URL.revokeObjectURL(url)
+    document.body.removeChild(link)
+    window.setTimeout(() => URL.revokeObjectURL(url), 0)
   }
 
   async function copySeed(seed: number) {
-    await navigator.clipboard?.writeText(String(seed))
+    const copied = await copyTextToClipboard(String(seed))
+    if (!copied) setStatusMessage('复制失败，请手动复制种子号')
   }
 
   return (

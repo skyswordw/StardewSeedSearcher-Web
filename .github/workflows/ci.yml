@@ -28,8 +28,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Typecheck
         run: npm run typecheck
@@ -46,8 +46,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Playwright Chromium e2e
-        run: npm run test:e2e -- --project=chromium --reporter=line,html
+      - name: Playwright browser e2e
+        run: npm run test:e2e -- --project=chromium --project=webkit --reporter=line,html
 
       - name: Upload Playwright report
         if: failure()
