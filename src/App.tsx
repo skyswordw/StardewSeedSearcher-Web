@@ -111,7 +111,6 @@ function App() {
   ])
 
   const [isSearching, setIsSearching] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'running' | 'complete' | 'error'>('idle')
   const [searchStatus, setSearchStatus] = useState<SearchStatus>({ type: 'idle' })
   const [checkedCount, setCheckedCount] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
@@ -199,7 +198,6 @@ function App() {
     setStoppedEarly(null)
     setActiveRange({ start: request.startSeed, end: request.endSeed })
     setSearchStatus({ type: 'searching', start: request.startSeed, end: request.endSeed })
-    setConnectionStatus('running')
     setIsSearching(true)
 
     worker.onmessage = (event: MessageEvent<SearchMessage & { jobId: string; message?: string }>) => {
@@ -240,7 +238,6 @@ function App() {
     if (message.type === 'complete') {
       setSearchStatus(message.cancelled ? { type: 'stopped', totalFound: message.totalFound } : { type: 'completed', totalFound: message.totalFound })
       setIsSearching(false)
-      setConnectionStatus(message.cancelled ? 'idle' : 'complete')
       setStoppedEarly(!message.cancelled && message.totalFound >= request.outputLimit)
       if (searchRange === 'max') {
         setStartSeed(message.cancelled ? savedStartSeed.current : 1)
@@ -285,9 +282,22 @@ function App() {
 
   return (
     <main className="app-shell" data-testid="app-shell" lang={locale === 'en' ? 'en' : 'zh-CN'}>
-      <div className={`connection-status ${connectionStatus}`} data-testid="connection-status">
-        {connectionLabel(connectionStatus, t)}
-      </div>
+      <a
+        className="github-corner"
+        data-testid="github-repo-link"
+        href="https://github.com/skyswordw/StardewSeedSearcher-Web"
+        target="_blank"
+        rel="noreferrer"
+        aria-label={t.githubRepository}
+        title={t.githubRepository}
+      >
+        <svg viewBox="0 0 80 80" aria-hidden="true" focusable="false">
+          <path className="github-corner-bg" d="M80 0v80L0 0Z" />
+          <g className="github-corner-mark" transform="translate(47 10) scale(1.45)">
+            <GithubMarkPath />
+          </g>
+        </svg>
+      </a>
       <header className="app-header">
         <a href="https://wiki.biligame.com/stardewvalley/%E6%98%9F%E9%9C%B2%E8%B0%B7%E7%89%A9%E8%AF%AD%E7%BB%B4%E5%9F%BA" target="_blank">
           <img src={logo} alt="Stardew Valley" className="brand-icon" />
@@ -671,6 +681,12 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
+function GithubMarkPath() {
+  return (
+    <path d="M8 0.2a7.9 7.9 0 0 0-2.5 15.4c0.4 0.1 0.5-0.2 0.5-0.4v-1.5c-2.1 0.5-2.5-0.9-2.5-0.9-0.3-0.8-0.8-1-0.8-1-0.7-0.5 0-0.5 0-0.5 0.7 0.1 1.1 0.8 1.1 0.8 0.7 1.1 1.7 0.8 2.1 0.6 0.1-0.5 0.3-0.8 0.5-1-1.7-0.2-3.4-0.8-3.4-3.8 0-0.8 0.3-1.5 0.8-2.1-0.1-0.2-0.3-1 0.1-2 0 0 0.6-0.2 2.1 0.8a7.1 7.1 0 0 1 3.8 0c1.5-1 2.1-0.8 2.1-0.8 0.4 1 0.2 1.8 0.1 2 0.5 0.6 0.8 1.3 0.8 2.1 0 3-1.8 3.6-3.4 3.8 0.3 0.2 0.5 0.7 0.5 1.4v2.1c0 0.2 0.1 0.5 0.5 0.4A7.9 7.9 0 0 0 8 0.2Z" />
+  )
+}
+
 function SeedDrawer({
   found,
   t,
@@ -794,13 +810,6 @@ function updateAt<T>(items: T[], setItems: (items: T[]) => void, index: number, 
 
 function removeAt<T>(items: T[], setItems: (items: T[]) => void, index: number) {
   setItems(items.filter((_, itemIndex) => itemIndex !== index))
-}
-
-function connectionLabel(status: 'idle' | 'running' | 'complete' | 'error', t: AppCopy) {
-  if (status === 'running') return t.workerRunning
-  if (status === 'complete') return t.complete
-  if (status === 'error') return t.error
-  return t.localCompute
 }
 
 function formatStatus(status: SearchStatus, t: AppCopy): string {

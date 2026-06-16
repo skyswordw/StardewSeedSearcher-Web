@@ -14,7 +14,6 @@ export const featureIds = [
 export type FeatureId = (typeof featureIds)[number]
 
 export const dynamicScreenshotMasks = (page: Page) => [
-  page.getByTestId('connection-status'),
   page.getByTestId('status-message'),
   page.getByTestId('progress'),
   page.getByTestId('metric-grid'),
@@ -67,13 +66,11 @@ export async function startSearch(page: Page) {
 }
 
 export async function waitForRunningState(page: Page) {
-  await expect(page.getByTestId('connection-status')).toHaveText(/Worker 搜索中|Worker searching/)
   await expect(page.getByTestId('status-message')).toContainText(/正在搜索|Searching/)
   await expect(page.getByTestId('start-search')).toContainText(/停止搜索|Stop search/)
 }
 
 export async function waitForCompleteState(page: Page) {
-  await expect(page.getByTestId('connection-status')).toHaveText(/搜索完成|Search complete/)
   await expect(page.getByTestId('status-message')).toContainText(/搜索完成|找到|Search complete|Found/)
   await expect(page.getByTestId('start-search')).toContainText(/开始搜索|Start search/)
   await expect(resultRows(page).first()).toBeVisible()

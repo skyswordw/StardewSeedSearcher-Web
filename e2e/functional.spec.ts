@@ -19,11 +19,13 @@ test.describe('functional UI coverage', () => {
   test('renders the idle state without horizontal overflow', async ({ page }) => {
     await openApp(page)
 
-    await expect(page.getByTestId('connection-status')).toHaveText('本地浏览器计算')
+    await expect(page.getByTestId('connection-status')).toHaveCount(0)
     await expect(page.getByTestId('status-message')).toHaveText('等待搜索')
     await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
     await expect(page.getByText('暂无结果')).toBeVisible()
     await expect(page.getByRole('button', { name: /导出所有种子号/ })).toBeDisabled()
+    await expect(page.getByTestId('github-repo-link')).toHaveAttribute('href', 'https://github.com/skyswordw/StardewSeedSearcher-Web')
+    await expect(page.getByTestId('github-repo-link')).toBeVisible()
     await assertNoHorizontalOverflow(page)
   })
 
@@ -34,7 +36,6 @@ test.describe('functional UI coverage', () => {
 
     await expect(page).toHaveTitle(/Unofficial Stardew Valley seed searcher Web port/)
     await expect(page.getByTestId('status-message')).toHaveText('Ready to search')
-    await expect(page.getByTestId('connection-status')).toHaveText('Local browser compute')
     await expect(page.getByTestId('start-search')).toContainText('Start search')
     await expect(page.getByRole('button', { name: /Export seed numbers/ })).toBeDisabled()
     await expect(featureSection(page, 'weather')).toContainText('Weather filter')
@@ -106,7 +107,6 @@ test.describe('functional UI coverage', () => {
 
     await page.getByTestId('start-search').click()
     await expect(page.getByTestId('status-message')).toContainText(/搜索已停止|正在停止搜索/)
-    await expect(page.getByTestId('connection-status')).toHaveText('本地浏览器计算')
     await expect(page.getByTestId('start-search')).toContainText('开始搜索')
   })
 

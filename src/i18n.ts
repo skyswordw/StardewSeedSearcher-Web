@@ -8,14 +8,11 @@ export const localeNames: Record<Locale, string> = {
 const zh = {
   subtitle: '星露谷物语种子搜索器 Web 版',
   language: '语言',
-  localCompute: '本地浏览器计算',
-  workerRunning: 'Worker 搜索中',
-  complete: '搜索完成',
-  error: '搜索错误',
+  githubRepository: 'GitHub 仓库',
   idleStatus: '等待搜索',
   guide: '操作指南',
   guideItems: [
-    'Web 版在浏览器 Web Worker 中搜索，不需要下载或启动本地 C# 服务。',
+    '打开网页就能搜索种子，不需要额外下载或安装工具。',
     '搜索开始后按钮会变为停止搜索，点击即可取消当前任务。',
     '基于 CuiYinYin2023/StardewSeedSearcher V1.0 的非官方 Web 移植版；如遇预测错误，请同时记录搜索条件和种子号。',
   ],
@@ -150,14 +147,11 @@ export const copy: Record<Locale, AppCopy> = {
   en: {
     subtitle: 'Unofficial Stardew Valley seed searcher Web port',
     language: 'Language',
-    localCompute: 'Local browser compute',
-    workerRunning: 'Worker searching',
-    complete: 'Search complete',
-    error: 'Search error',
+    githubRepository: 'GitHub repository',
     idleStatus: 'Ready to search',
     guide: 'Guide',
     guideItems: [
-      'Runs entirely in a browser Web Worker; no local C# service is required.',
+      'Open the Web page and start searching seeds; no extra download or install is needed.',
       'After a search starts, the primary button becomes Stop Search and cancels the current job.',
       'Unofficial Web port based on CuiYinYin2023/StardewSeedSearcher V1.0; report prediction issues with conditions and seed number.',
     ],
