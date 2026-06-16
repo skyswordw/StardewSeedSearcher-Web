@@ -43,6 +43,9 @@ jobs:
       - name: Oracle fixture drift check
         run: npm run fixtures:check
 
+      - name: Random oracle parity sampling
+        run: npm run parity:sample:ci
+
       - name: Build
         run: npm run build
 

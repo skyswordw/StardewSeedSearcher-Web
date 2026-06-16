@@ -17,6 +17,8 @@
     "dotnet:local": "node tools/oracle/dotnet-local.mjs",
     "fixtures:generate": "node tools/oracle/generate-fixtures.mjs",
     "fixtures:check": "node tools/oracle/generate-fixtures.mjs --check",
+    "parity:sample": "node tools/oracle/random-parity-sampler.mjs",
+    "parity:sample:ci": "node tools/oracle/random-parity-sampler.mjs --seed 20260616 --cases 50 --window 2000",
     "preview": "vite preview"
   },
   "dependencies": {
