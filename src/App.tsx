@@ -260,8 +260,10 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
-      <div className={`connection-status ${connectionStatus}`}>{connectionLabel(connectionStatus)}</div>
+    <main className="app-shell" data-testid="app-shell">
+      <div className={`connection-status ${connectionStatus}`} data-testid="connection-status">
+        {connectionLabel(connectionStatus)}
+      </div>
       <header className="app-header">
         <a href="https://wiki.biligame.com/stardewvalley/%E6%98%9F%E9%9C%B2%E8%B0%B7%E7%89%A9%E8%AF%AD%E7%BB%B4%E5%9F%BA" target="_blank">
           <img src={logo} alt="Stardew Valley" className="brand-icon" />
@@ -275,8 +277,8 @@ function App() {
         </a>
       </header>
 
-      <form className="tool-grid" onSubmit={submitForm}>
-        <section className="panel main-panel">
+      <form className="tool-grid" data-testid="tool-grid" onSubmit={submitForm}>
+        <section className="panel main-panel" data-testid="main-panel">
           <details className="guide" open>
             <summary>
               <Info size={18} /> 操作指南
@@ -455,10 +457,10 @@ function App() {
           </div>
         </section>
 
-        <aside className="panel results-panel">
+        <aside className="panel results-panel" data-testid="results-panel">
           <h2>搜索状态</h2>
           <div className="status-card">
-            <p>{statusMessage}</p>
+            <p data-testid="status-message">{statusMessage}</p>
             {rangeBadge && <span className="range-badge">{rangeBadge}</span>}
             <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, progress)} data-testid="progress">
               <div className="progress-fill" style={{ width: `${Math.min(100, progress)}%` }}>
@@ -466,7 +468,7 @@ function App() {
               </div>
             </div>
           </div>
-          <div className="metric-grid">
+          <div className="metric-grid" data-testid="metric-grid">
             <Metric label="已检查" value={checkedCount.toLocaleString()} />
             <Metric label="总范围" value={totalCount.toLocaleString()} />
             <Metric label="找到" value={foundSeeds.length.toLocaleString()} />
@@ -535,7 +537,7 @@ function FeatureSection({
   children: React.ReactNode
 }) {
   return (
-    <section className={`feature-section ${enabled ? 'enabled' : ''}`}>
+    <section className={`feature-section ${enabled ? 'enabled' : ''}`} data-testid={`feature-section-${title}`}>
       <div className="feature-header">
         <label className="check title-check">
           <input
@@ -628,8 +630,8 @@ function Metric({ label, value }: { label: string; value: string }) {
 function SeedDrawer({ found, onClose, onCopy }: { found: FoundSeed; onClose: () => void; onCopy: () => void }) {
   const { details, enabled } = found
   return (
-    <div className="drawer-backdrop" role="dialog" aria-modal="true" data-testid="seed-detail">
-      <aside className="seed-drawer">
+    <div className="drawer-backdrop" role="dialog" aria-modal="true" aria-label={`种子 ${found.seed} 简介`} data-testid="seed-detail">
+      <aside className="seed-drawer" data-testid="seed-drawer">
         <header>
           <div>
             <span>种子简介</span>

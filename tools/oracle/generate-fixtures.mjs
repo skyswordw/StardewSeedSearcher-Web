@@ -10,6 +10,7 @@ const upstreamDir = resolve(root, 'tools/oracle/upstream/StardewSeedSearcher')
 const fixturePath = resolve(root, 'src/search-core/__fixtures__/oracle-sample.json')
 const upstreamUrl = 'https://github.com/CuiYinYin2023/StardewSeedSearcher.git'
 const upstreamCommit = '0e7d0df08f14f2c342747ca9a22c90d8edc9d892'
+const checkMode = process.argv.includes('--check')
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -97,7 +98,7 @@ function patchProject() {
   writeFileSync(runnerPath, oracleRunnerSource)
 }
 
-function generateFixture() {
+function generateFixtureJson() {
   const project = resolve(upstreamDir, 'StardewSeedSearcher/StardewSeedSearcher.csproj')
   const rawOutput = output(dotnet, ['run', '--project', project, '--configuration', 'Release', '--no-launch-profile'], {
     cwd: upstreamDir,
@@ -109,8 +110,23 @@ function generateFixture() {
   }
   const json = rawOutput.slice(jsonStart)
   JSON.parse(json)
+  return `${json.trim()}\n`
+}
+
+function generateFixture() {
+  const json = generateFixtureJson()
+  if (checkMode) {
+    const current = readFileSync(fixturePath, 'utf8')
+    if (current !== json) {
+      throw new Error(`${fixturePath} is out of date. Run npm run fixtures:generate.`)
+    }
+    console.log(`Fixture is up to date: ${fixturePath}`)
+    return
+  }
+
   ensureDir(dirname(fixturePath))
-  writeFileSync(fixturePath, `${json.trim()}\n`)
+  writeFileSync(fixturePath, json)
+  console.log(`Wrote ${fixturePath}`)
 }
 
 function main() {
@@ -118,7 +134,6 @@ function main() {
   ensureUpstream()
   patchProject()
   generateFixture()
-  console.log(`Wrote ${fixturePath}`)
 }
 
 const oracleRunnerSource = String.raw`using System.Text.Json;
@@ -134,52 +149,205 @@ public static class OracleFixtureRunner
     {
         TravelingCartData.Initialize();
 
+        var weatherCondition = new WeatherCondition { Season = 0, StartDay = 1, EndDay = 28, MinRainDays = 4 };
+        var fairyCondition = new FairyCondition
+        {
+            StartYear = 1,
+            StartSeason = 0,
+            StartDay = 1,
+            EndYear = 1,
+            EndSeason = 2,
+            EndDay = 28,
+            MinOccurrences = 1
+        };
+        var mineChestNewCondition = new MineChestPredictor.MineChestCondition { Floor = 10, ItemName = "工作靴" };
+        var mineChestLegacyCondition = new MineChestPredictor.MineChestCondition { Floor = 10, ItemName = "木剑" };
+        var monsterLevelCondition = new MonsterLevelPredictor.MonsterLevelCondition
+        {
+            StartSeason = 0,
+            StartDay = 5,
+            EndSeason = 0,
+            EndDay = 5,
+            StartLevel = 1,
+            EndLevel = 40
+        };
+        var cartCondition = new CartCondition
+        {
+            StartYear = 1,
+            StartSeason = 0,
+            StartDay = 5,
+            EndYear = 1,
+            EndSeason = 2,
+            EndDay = 28,
+            ItemName = "野山葵",
+            RequireQty5 = false,
+            MinOccurrences = 1
+        };
+
         var fixture = new
         {
             meta = new
             {
                 source = "CuiYinYin2023/StardewSeedSearcher",
                 commit = "0e7d0df08f14f2c342747ca9a22c90d8edc9d892",
-                generatedBy = "tools/oracle/generate-fixtures.mjs"
+                generatedBy = "tools/oracle/generate-fixtures.mjs",
+                schema = "oracle-golden-matrix-v1",
+                note = "C# is used only to generate committed parity fixtures."
             },
             primitives = new
             {
-                randomSeed1Next = RandomNextSequence(1, 10),
-                randomSeed1Range2To31 = RandomRangeSequence(1, 2, 31, 8),
-                hashes = new
+                random = new[]
                 {
-                    location_weather = HashHelper.GetHashFromString("location_weather"),
-                    summer_rain_chance = HashHelper.GetHashFromString("summer_rain_chance"),
-                    travelerSkillBook = HashHelper.GetHashFromString("travelerSkillBook"),
-                    array_777_1_0_0_0 = HashHelper.GetHashFromArray(777, 1, 0, 0, 0),
-                    randomSeedNew_777_1_0_0_0 = HashHelper.GetRandomSeed(777, 1, 0, 0, 0, false),
-                    randomSeedLegacy_777_1_0_0_0 = HashHelper.GetRandomSeed(777, 1, 0, 0, 0, true)
+                    new
+                    {
+                        name = "next-seed-1",
+                        seed = 1,
+                        operation = "next",
+                        min = (int?)null,
+                        max = (int?)null,
+                        count = 10,
+                        expected = RandomNextSequence(1, 10)
+                    },
+                    new
+                    {
+                        name = "range-seed-1-2-to-31",
+                        seed = 1,
+                        operation = "nextRange",
+                        min = (int?)2,
+                        max = (int?)31,
+                        count = 8,
+                        expected = RandomRangeSequence(1, 2, 31, 8)
+                    },
+                    new
+                    {
+                        name = "negative-seed-next",
+                        seed = -12345,
+                        operation = "next",
+                        min = (int?)null,
+                        max = (int?)null,
+                        count = 5,
+                        expected = RandomNextSequence(-12345, 5)
+                    },
+                    new
+                    {
+                        name = "int-min-seed-next",
+                        seed = int.MinValue,
+                        operation = "next",
+                        min = (int?)null,
+                        max = (int?)null,
+                        count = 5,
+                        expected = RandomNextSequence(int.MinValue, 5)
+                    }
+                },
+                hashes = new[]
+                {
+                    HashStringCase("location_weather"),
+                    HashStringCase("summer_rain_chance"),
+                    HashStringCase("travelerSkillBook"),
+                    HashArrayCase("zero-array", 0, 0, 0, 0, 0),
+                    HashArrayCase("mixed-sign-array", -1, 0, 1, int.MaxValue, int.MinValue),
+                    HashArrayCase("weather-array", 777, 1, 0, 0, 0),
+                    RandomSeedCase("new-weather", 777, 1, 0, 0, 0, false),
+                    RandomSeedCase("legacy-weather", 777, 1, 0, 0, 0, true),
+                    RandomSeedCase("new-mod-boundary", int.MinValue, -17, 99, 0, int.MaxValue, false),
+                    RandomSeedCase("legacy-mod-boundary", int.MinValue, -17, 99, 0, int.MaxValue, true)
                 },
                 dates = new
                 {
-                    y1Spring1 = TimeHelper.DateToAbsoluteDay(1, 0, 1),
-                    y1Fall28 = TimeHelper.DateToAbsoluteDay(1, 2, 28),
-                    y2Spring1 = TimeHelper.DateToAbsoluteDay(2, 0, 1),
-                    abs84 = DateObject(TimeHelper.AbsoluteDaytoDate(84)),
-                    abs113 = DateObject(TimeHelper.AbsoluteDaytoDate(113))
+                    toAbsolute = new[]
+                    {
+                        DateToAbsoluteCase("y1-spring-1", 1, 0, 1),
+                        DateToAbsoluteCase("y1-winter-28", 1, 3, 28),
+                        DateToAbsoluteCase("y2-spring-1", 2, 0, 1),
+                        DateToAbsoluteCase("y3-winter-28", 3, 3, 28)
+                    },
+                    fromAbsolute = new[]
+                    {
+                        AbsoluteToDateCase(1),
+                        AbsoluteToDateCase(84),
+                        AbsoluteToDateCase(112),
+                        AbsoluteToDateCase(113),
+                        AbsoluteToDateCase(336)
+                    }
                 }
             },
-            predictors = new
+            predictorCases = new object[]
             {
-                weatherSeed1New = WeatherDetail(1, false),
-                weatherSeed1Legacy = WeatherDetail(1, true),
-                mineChestSeed1Floor10New = MineChestDetail(1, 10, "皮靴", false),
-                mineChestSeed1Floor10Legacy = MineChestDetail(1, 10, "皮靴", true),
-                desertFestivalSeed1New = DesertFestivalDetail(1, false),
-                desertFestivalSeed1Legacy = DesertFestivalDetail(1, true),
-                fairySeed1New = FairyDetail(1, false),
-                monsterLevelSeed1New = MonsterLevelDetail(1, false),
-                cartSeed1New = CartDetail(1, false)
+                PredictorCase("weather-seed-1-new", "weather", 1, false, new { weatherConditions = new[] { WeatherConditionObject(weatherCondition) } }, WeatherDetail(1, false)),
+                PredictorCase("weather-seed-1-legacy", "weather", 1, true, new { weatherConditions = new[] { WeatherConditionObject(weatherCondition) } }, WeatherDetail(1, true)),
+                PredictorCase("mine-chest-floor-10-new", "mineChest", 1, false, new { mineChestConditions = new[] { MineChestConditionObject(mineChestNewCondition) } }, MineChestDetail(1, new[] { mineChestNewCondition }, false)),
+                PredictorCase("mine-chest-floor-10-legacy", "mineChest", 1, true, new { mineChestConditions = new[] { MineChestConditionObject(mineChestLegacyCondition) } }, MineChestDetail(1, new[] { mineChestLegacyCondition }, true)),
+                PredictorCase("desert-festival-seed-1-new", "desertFestival", 1, false, new { desertFestivalCondition = new { requireJas = false, requireLeah = false } }, DesertFestivalDetail(1, false)),
+                PredictorCase("desert-festival-seed-1-legacy", "desertFestival", 1, true, new { desertFestivalCondition = new { requireJas = false, requireLeah = false } }, DesertFestivalDetail(1, true)),
+                PredictorCase("fairy-seed-17-new", "fairy", 17, false, new { fairyConditions = new[] { FairyConditionObject(fairyCondition) } }, FairyDetail(17, new[] { fairyCondition }, false)),
+                PredictorCase("fairy-seed-137-legacy", "fairy", 137, true, new { fairyConditions = new[] { FairyConditionObject(fairyCondition) } }, FairyDetail(137, new[] { fairyCondition }, true)),
+                PredictorCase("monster-level-spring-5-new", "monsterLevel", 1, false, new { monsterLevelConditions = new[] { MonsterLevelConditionObject(monsterLevelCondition) } }, MonsterLevelDetail(1, new[] { monsterLevelCondition }, false)),
+                PredictorCase("monster-level-spring-5-legacy", "monsterLevel", 1, true, new { monsterLevelConditions = new[] { MonsterLevelConditionObject(monsterLevelCondition) } }, MonsterLevelDetail(1, new[] { monsterLevelCondition }, true)),
+                PredictorCase("cart-wild-horseradish-new", "cart", 2, false, new { cartConditions = new[] { CartConditionObject(cartCondition) } }, CartDetail(2, new[] { cartCondition }, false)),
+                PredictorCase("cart-wild-horseradish-legacy", "cart", 2, true, new { cartConditions = new[] { CartConditionObject(cartCondition) } }, CartDetail(2, new[] { cartCondition }, true))
             },
-            searches = new
+            searchCases = new object[]
             {
-                weatherSpringRain4Seeds1To500New = SearchWeatherSpringRain4(1, 500, false, 3),
-                weatherSpringRain4Seeds1To500Legacy = SearchWeatherSpringRain4(1, 500, true, 3)
+                SearchCase(
+                    "weather-spring-rain-4-new",
+                    new SearchSpec(
+                        StartSeed: 1,
+                        EndSeed: 500,
+                        UseLegacyRandom: false,
+                        WeatherConditions: new[] { weatherCondition },
+                        FairyConditions: Array.Empty<FairyCondition>(),
+                        MineChestConditions: Array.Empty<MineChestPredictor.MineChestCondition>(),
+                        MonsterLevelConditions: Array.Empty<MonsterLevelPredictor.MonsterLevelCondition>(),
+                        DesertFestivalCondition: null,
+                        CartConditions: Array.Empty<CartCondition>(),
+                        OutputLimit: 3
+                    )
+                ),
+                SearchCase(
+                    "weather-spring-rain-4-legacy",
+                    new SearchSpec(
+                        StartSeed: 1,
+                        EndSeed: 500,
+                        UseLegacyRandom: true,
+                        WeatherConditions: new[] { weatherCondition },
+                        FairyConditions: Array.Empty<FairyCondition>(),
+                        MineChestConditions: Array.Empty<MineChestPredictor.MineChestCondition>(),
+                        MonsterLevelConditions: Array.Empty<MonsterLevelPredictor.MonsterLevelCondition>(),
+                        DesertFestivalCondition: null,
+                        CartConditions: Array.Empty<CartCondition>(),
+                        OutputLimit: 3
+                    )
+                ),
+                SearchCase(
+                    "weather-and-mine-chest-new",
+                    new SearchSpec(
+                        StartSeed: 1,
+                        EndSeed: 1000,
+                        UseLegacyRandom: false,
+                        WeatherConditions: new[] { weatherCondition },
+                        FairyConditions: Array.Empty<FairyCondition>(),
+                        MineChestConditions: new[] { mineChestNewCondition },
+                        MonsterLevelConditions: Array.Empty<MonsterLevelPredictor.MonsterLevelCondition>(),
+                        DesertFestivalCondition: null,
+                        CartConditions: Array.Empty<CartCondition>(),
+                        OutputLimit: 5
+                    )
+                ),
+                SearchCase(
+                    "weather-and-desert-festival-legacy",
+                    new SearchSpec(
+                        StartSeed: 1,
+                        EndSeed: 2000,
+                        UseLegacyRandom: true,
+                        WeatherConditions: new[] { weatherCondition },
+                        FairyConditions: Array.Empty<FairyCondition>(),
+                        MineChestConditions: Array.Empty<MineChestPredictor.MineChestCondition>(),
+                        MonsterLevelConditions: Array.Empty<MonsterLevelPredictor.MonsterLevelCondition>(),
+                        DesertFestivalCondition: new DesertFestivalSpec(RequireJas: false, RequireLeah: true),
+                        CartConditions: Array.Empty<CartCondition>(),
+                        OutputLimit: 5
+                    )
+                )
             }
         };
 
@@ -201,6 +369,40 @@ public static class OracleFixtureRunner
     private static object DateObject((int year, int season, int day) date) =>
         new { date.year, date.season, date.day };
 
+    private static object HashStringCase(string value) =>
+        new { kind = "string", value, expected = HashHelper.GetHashFromString(value) };
+
+    private static object HashArrayCase(string name, params int[] values) =>
+        new { kind = "array", name, values, expected = HashHelper.GetHashFromArray(values) };
+
+    private static object RandomSeedCase(string name, int a, int b, int c, int d, int e, bool useLegacyRandom) =>
+        new
+        {
+            kind = "randomSeed",
+            name,
+            values = new[] { a, b, c, d, e },
+            useLegacyRandom,
+            expected = HashHelper.GetRandomSeed(a, b, c, d, e, useLegacyRandom)
+        };
+
+    private static object DateToAbsoluteCase(string name, int year, int season, int day) =>
+        new
+        {
+            name,
+            input = new { year, season, day },
+            expected = TimeHelper.DateToAbsoluteDay(year, season, day)
+        };
+
+    private static object AbsoluteToDateCase(int absoluteDay) =>
+        new
+        {
+            absoluteDay,
+            expected = DateObject(TimeHelper.AbsoluteDaytoDate(absoluteDay))
+        };
+
+    private static object PredictorCase(string name, string kind, int seed, bool useLegacyRandom, object input, object expected) =>
+        new { name, kind, seed, useLegacyRandom, input, expected };
+
     private static object WeatherDetail(int seed, bool legacy)
     {
         var predictor = new WeatherPredictor();
@@ -217,10 +419,10 @@ public static class OracleFixtureRunner
         };
     }
 
-    private static object MineChestDetail(int seed, int floor, string itemName, bool legacy)
+    private static object MineChestDetail(int seed, IEnumerable<MineChestPredictor.MineChestCondition> conditions, bool legacy)
     {
         var predictor = new MineChestPredictor { IsEnabled = true };
-        predictor.Conditions.Add(new MineChestPredictor.MineChestCondition { Floor = floor, ItemName = itemName });
+        predictor.Conditions.AddRange(conditions);
         return predictor.GetDetails(seed, legacy);
     }
 
@@ -229,55 +431,209 @@ public static class OracleFixtureRunner
         return new DesertFestivalPredictor().GetDetails(seed, legacy);
     }
 
-    private static object FairyDetail(int seed, bool legacy)
+    private static object FairyDetail(int seed, IEnumerable<FairyCondition> conditions, bool legacy)
     {
         var predictor = new FairyPredictor { IsEnabled = true };
-        predictor.Conditions.Add(new FairyCondition
-        {
-            StartYear = 1,
-            StartSeason = 0,
-            StartDay = 1,
-            EndYear = 1,
-            EndSeason = 2,
-            EndDay = 28,
-            MinOccurrences = 1
-        });
+        predictor.Conditions.AddRange(conditions);
         return new { days = predictor.GetFairyDays(seed, legacy) };
     }
 
-    private static object MonsterLevelDetail(int seed, bool legacy)
+    private static object MonsterLevelDetail(int seed, IEnumerable<MonsterLevelPredictor.MonsterLevelCondition> conditions, bool legacy)
     {
         var predictor = new MonsterLevelPredictor { IsEnabled = true };
-        predictor.Conditions.Add(new MonsterLevelPredictor.MonsterLevelCondition
-        {
-            StartSeason = 0,
-            StartDay = 5,
-            EndSeason = 0,
-            EndDay = 5,
-            StartLevel = 1,
-            EndLevel = 40
-        });
+        predictor.Conditions.AddRange(conditions);
         return predictor.GetDetails(seed, legacy);
     }
 
-    private static object CartDetail(int seed, bool legacy)
+    private static object CartDetail(int seed, IEnumerable<CartCondition> conditions, bool legacy)
     {
-        var itemName = TravelingCartData.OptimizedItems.First(item => item.IsEligible).Name;
         var predictor = new TravelingCartPredictor { IsEnabled = true };
-        predictor.Conditions.Add(new CartCondition
-        {
-            StartYear = 1,
-            StartSeason = 0,
-            StartDay = 5,
-            EndYear = 1,
-            EndSeason = 2,
-            EndDay = 28,
-            ItemName = itemName,
-            RequireQty5 = false,
-            MinOccurrences = 1
-        });
-        return new { itemName, matches = predictor.GetCartMatches(seed, legacy) };
+        predictor.Conditions.AddRange(conditions);
+        var matches = predictor.GetCartMatches(seed, legacy)
+            .Cast<CartDayMatch>()
+            .Select(match => new
+            {
+                year = match.Year,
+                season = match.Season,
+                day = match.Day,
+                absoluteDay = match.AbsoluteDay,
+                itemName = match.ItemName,
+                quantity = match.Quantity,
+                price = match.Price
+            })
+            .ToArray();
+        return new { matches };
     }
+
+    private static object SearchCase(string name, SearchSpec spec)
+    {
+        return new
+        {
+            name,
+            request = SearchRequestObject(spec),
+            expected = Search(spec)
+        };
+    }
+
+    private static int[] Search(SearchSpec spec)
+    {
+        var features = InitializeFeatures(spec);
+        var sortedFeatures = features.OrderBy(feature => feature.EstimateCost(spec.UseLegacyRandom)).ToList();
+        var results = new List<int>();
+
+        for (var seed = spec.StartSeed; seed <= spec.EndSeed; seed++)
+        {
+            var allMatch = true;
+            foreach (var feature in sortedFeatures)
+            {
+                if (!feature.Check(seed, spec.UseLegacyRandom))
+                {
+                    allMatch = false;
+                    break;
+                }
+            }
+
+            if (!allMatch) continue;
+            results.Add(seed);
+            if (results.Count >= spec.OutputLimit) break;
+        }
+
+        return results.ToArray();
+    }
+
+    private static List<ISearchFeature> InitializeFeatures(SearchSpec spec)
+    {
+        var features = new List<ISearchFeature>();
+
+        if (spec.WeatherConditions.Length > 0)
+        {
+            var predictor = new WeatherPredictor { IsEnabled = true };
+            predictor.Conditions.AddRange(spec.WeatherConditions);
+            features.Add(predictor);
+        }
+        if (spec.FairyConditions.Length > 0)
+        {
+            var predictor = new FairyPredictor { IsEnabled = true };
+            predictor.Conditions.AddRange(spec.FairyConditions);
+            features.Add(predictor);
+        }
+        if (spec.MineChestConditions.Length > 0)
+        {
+            var predictor = new MineChestPredictor { IsEnabled = true };
+            predictor.Conditions.AddRange(spec.MineChestConditions);
+            features.Add(predictor);
+        }
+        if (spec.MonsterLevelConditions.Length > 0)
+        {
+            var predictor = new MonsterLevelPredictor { IsEnabled = true };
+            predictor.Conditions.AddRange(spec.MonsterLevelConditions);
+            features.Add(predictor);
+        }
+        if (spec.DesertFestivalCondition is not null && (spec.DesertFestivalCondition.RequireJas || spec.DesertFestivalCondition.RequireLeah))
+        {
+            features.Add(new DesertFestivalPredictor
+            {
+                IsEnabled = true,
+                RequireJas = spec.DesertFestivalCondition.RequireJas,
+                RequireLeah = spec.DesertFestivalCondition.RequireLeah
+            });
+        }
+        if (spec.CartConditions.Length > 0)
+        {
+            var predictor = new TravelingCartPredictor { IsEnabled = true };
+            predictor.Conditions.AddRange(spec.CartConditions);
+            features.Add(predictor);
+        }
+
+        return features;
+    }
+
+    private static object SearchRequestObject(SearchSpec spec) =>
+        new
+        {
+            startSeed = spec.StartSeed,
+            endSeed = spec.EndSeed,
+            useLegacyRandom = spec.UseLegacyRandom,
+            weatherConditions = spec.WeatherConditions.Select(WeatherConditionObject).ToArray(),
+            fairyConditions = spec.FairyConditions.Select(FairyConditionObject).ToArray(),
+            mineChestConditions = spec.MineChestConditions.Select(MineChestConditionObject).ToArray(),
+            monsterLevelConditions = spec.MonsterLevelConditions.Select(MonsterLevelConditionObject).ToArray(),
+            desertFestivalCondition = spec.DesertFestivalCondition is null ? null : new
+            {
+                requireJas = spec.DesertFestivalCondition.RequireJas,
+                requireLeah = spec.DesertFestivalCondition.RequireLeah
+            },
+            cartConditions = spec.CartConditions.Select(CartConditionObject).ToArray(),
+            outputLimit = spec.OutputLimit
+        };
+
+    private static object WeatherConditionObject(WeatherCondition condition) =>
+        new
+        {
+            season = condition.Season,
+            startDay = condition.StartDay,
+            endDay = condition.EndDay,
+            minRainDays = condition.MinRainDays
+        };
+
+    private static object FairyConditionObject(FairyCondition condition) =>
+        new
+        {
+            startYear = condition.StartYear,
+            startSeason = condition.StartSeason,
+            startDay = condition.StartDay,
+            endYear = condition.EndYear,
+            endSeason = condition.EndSeason,
+            endDay = condition.EndDay,
+            minOccurrences = condition.MinOccurrences
+        };
+
+    private static object MineChestConditionObject(MineChestPredictor.MineChestCondition condition) =>
+        new
+        {
+            floor = condition.Floor,
+            itemName = condition.ItemName
+        };
+
+    private static object MonsterLevelConditionObject(MonsterLevelPredictor.MonsterLevelCondition condition) =>
+        new
+        {
+            startSeason = condition.StartSeason,
+            endSeason = condition.EndSeason,
+            startDay = condition.StartDay,
+            endDay = condition.EndDay,
+            startLevel = condition.StartLevel,
+            endLevel = condition.EndLevel
+        };
+
+    private static object CartConditionObject(CartCondition condition) =>
+        new
+        {
+            startYear = condition.StartYear,
+            startSeason = condition.StartSeason,
+            startDay = condition.StartDay,
+            endYear = condition.EndYear,
+            endSeason = condition.EndSeason,
+            endDay = condition.EndDay,
+            itemName = condition.ItemName,
+            requireQty5 = condition.RequireQty5,
+            minOccurrences = condition.MinOccurrences
+        };
+
+    private record DesertFestivalSpec(bool RequireJas, bool RequireLeah);
+
+    private record SearchSpec(
+        int StartSeed,
+        int EndSeed,
+        bool UseLegacyRandom,
+        WeatherCondition[] WeatherConditions,
+        FairyCondition[] FairyConditions,
+        MineChestPredictor.MineChestCondition[] MineChestConditions,
+        MonsterLevelPredictor.MonsterLevelCondition[] MonsterLevelConditions,
+        DesertFestivalSpec? DesertFestivalCondition,
+        CartCondition[] CartConditions,
+        int OutputLimit
+    );
 
     private static int[] SearchWeatherSpringRain4(int start, int end, bool legacy, int limit)
     {

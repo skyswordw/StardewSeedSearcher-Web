@@ -12,9 +12,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "bench:search": "node tools/bench/search-benchmark.mjs",
     "dotnet:install": "node tools/oracle/install-dotnet.mjs",
     "dotnet:local": "node tools/oracle/dotnet-local.mjs",
     "fixtures:generate": "node tools/oracle/generate-fixtures.mjs",
+    "fixtures:check": "node tools/oracle/generate-fixtures.mjs --check",
     "preview": "vite preview"
   },
   "dependencies": {

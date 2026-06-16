@@ -2,176 +2,739 @@
   "meta": {
     "source": "CuiYinYin2023/StardewSeedSearcher",
     "commit": "0e7d0df08f14f2c342747ca9a22c90d8edc9d892",
-    "generatedBy": "tools/oracle/generate-fixtures.mjs"
+    "generatedBy": "tools/oracle/generate-fixtures.mjs",
+    "schema": "oracle-golden-matrix-v1",
+    "note": "C# is used only to generate committed parity fixtures."
   },
   "primitives": {
-    "randomSeed1Next": [
-      534011718,
-      237820880,
-      1002897798,
-      1657007234,
-      1412011072,
-      929393559,
-      760389092,
-      2026928803,
-      217468053,
-      1379662799
-    ],
-    "randomSeed1Range2To31": [
-      9,
-      5,
-      15,
-      24,
-      21,
-      14,
-      12,
-      29
-    ],
-    "hashes": {
-      "location_weather": -1513201250,
-      "summer_rain_chance": -309161378,
-      "travelerSkillBook": -451051273,
-      "array_777_1_0_0_0": 163044321,
-      "randomSeedNew_777_1_0_0_0": 163044321,
-      "randomSeedLegacy_777_1_0_0_0": 778
-    },
-    "dates": {
-      "y1Spring1": 1,
-      "y1Fall28": 84,
-      "y2Spring1": 113,
-      "abs84": {
-        "year": 1,
-        "season": 2,
-        "day": 28
+    "random": [
+      {
+        "name": "next-seed-1",
+        "seed": 1,
+        "operation": "next",
+        "min": null,
+        "max": null,
+        "count": 10,
+        "expected": [
+          534011718,
+          237820880,
+          1002897798,
+          1657007234,
+          1412011072,
+          929393559,
+          760389092,
+          2026928803,
+          217468053,
+          1379662799
+        ]
       },
-      "abs113": {
-        "year": 2,
-        "season": 0,
-        "day": 1
+      {
+        "name": "range-seed-1-2-to-31",
+        "seed": 1,
+        "operation": "nextRange",
+        "min": 2,
+        "max": 31,
+        "count": 8,
+        "expected": [
+          9,
+          5,
+          15,
+          24,
+          21,
+          14,
+          12,
+          29
+        ]
+      },
+      {
+        "name": "negative-seed-next",
+        "seed": -12345,
+        "operation": "next",
+        "min": null,
+        "max": null,
+        "count": 5,
+        "expected": [
+          143337951,
+          150666398,
+          1663795458,
+          1097663221,
+          1712597933
+        ]
+      },
+      {
+        "name": "int-min-seed-next",
+        "seed": -2147483648,
+        "operation": "next",
+        "min": null,
+        "max": null,
+        "count": 5,
+        "expected": [
+          1559595546,
+          1755192844,
+          1649316172,
+          1198642031,
+          442452829
+        ]
       }
+    ],
+    "hashes": [
+      {
+        "kind": "string",
+        "value": "location_weather",
+        "expected": -1513201250
+      },
+      {
+        "kind": "string",
+        "value": "summer_rain_chance",
+        "expected": -309161378
+      },
+      {
+        "kind": "string",
+        "value": "travelerSkillBook",
+        "expected": -451051273
+      },
+      {
+        "kind": "array",
+        "name": "zero-array",
+        "values": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "expected": 1333457339
+      },
+      {
+        "kind": "array",
+        "name": "mixed-sign-array",
+        "values": [
+          -1,
+          0,
+          1,
+          2147483647,
+          -2147483648
+        ],
+        "expected": 1206186536
+      },
+      {
+        "kind": "array",
+        "name": "weather-array",
+        "values": [
+          777,
+          1,
+          0,
+          0,
+          0
+        ],
+        "expected": 163044321
+      },
+      {
+        "kind": "randomSeed",
+        "name": "new-weather",
+        "values": [
+          777,
+          1,
+          0,
+          0,
+          0
+        ],
+        "useLegacyRandom": false,
+        "expected": 163044321
+      },
+      {
+        "kind": "randomSeed",
+        "name": "legacy-weather",
+        "values": [
+          777,
+          1,
+          0,
+          0,
+          0
+        ],
+        "useLegacyRandom": true,
+        "expected": 778
+      },
+      {
+        "kind": "randomSeed",
+        "name": "new-mod-boundary",
+        "values": [
+          -2147483648,
+          -17,
+          99,
+          0,
+          2147483647
+        ],
+        "useLegacyRandom": false,
+        "expected": -1923840576
+      },
+      {
+        "kind": "randomSeed",
+        "name": "legacy-mod-boundary",
+        "values": [
+          -2147483648,
+          -17,
+          99,
+          0,
+          2147483647
+        ],
+        "useLegacyRandom": true,
+        "expected": 81
+      }
+    ],
+    "dates": {
+      "toAbsolute": [
+        {
+          "name": "y1-spring-1",
+          "input": {
+            "year": 1,
+            "season": 0,
+            "day": 1
+          },
+          "expected": 1
+        },
+        {
+          "name": "y1-winter-28",
+          "input": {
+            "year": 1,
+            "season": 3,
+            "day": 28
+          },
+          "expected": 112
+        },
+        {
+          "name": "y2-spring-1",
+          "input": {
+            "year": 2,
+            "season": 0,
+            "day": 1
+          },
+          "expected": 113
+        },
+        {
+          "name": "y3-winter-28",
+          "input": {
+            "year": 3,
+            "season": 3,
+            "day": 28
+          },
+          "expected": 336
+        }
+      ],
+      "fromAbsolute": [
+        {
+          "absoluteDay": 1,
+          "expected": {
+            "year": 1,
+            "season": 0,
+            "day": 1
+          }
+        },
+        {
+          "absoluteDay": 84,
+          "expected": {
+            "year": 1,
+            "season": 2,
+            "day": 28
+          }
+        },
+        {
+          "absoluteDay": 112,
+          "expected": {
+            "year": 1,
+            "season": 3,
+            "day": 28
+          }
+        },
+        {
+          "absoluteDay": 113,
+          "expected": {
+            "year": 2,
+            "season": 0,
+            "day": 1
+          }
+        },
+        {
+          "absoluteDay": 336,
+          "expected": {
+            "year": 3,
+            "season": 3,
+            "day": 28
+          }
+        }
+      ]
     }
   },
-  "predictors": {
-    "weatherSeed1New": {
-      "springRain": [
-        3,
-        8,
-        16
-      ],
-      "summerRain": [
-        5,
-        7,
-        8,
-        13,
-        21,
-        23,
-        24,
-        26
-      ],
-      "fallRain": [
-        6,
-        12,
-        14,
-        18,
-        22,
-        26
-      ],
-      "greenRainDay": 7
+  "predictorCases": [
+    {
+      "name": "weather-seed-1-new",
+      "kind": "weather",
+      "seed": 1,
+      "useLegacyRandom": false,
+      "input": {
+        "weatherConditions": [
+          {
+            "season": 0,
+            "startDay": 1,
+            "endDay": 28,
+            "minRainDays": 4
+          }
+        ]
+      },
+      "expected": {
+        "springRain": [
+          3,
+          8,
+          16
+        ],
+        "summerRain": [
+          5,
+          7,
+          8,
+          13,
+          21,
+          23,
+          24,
+          26
+        ],
+        "fallRain": [
+          6,
+          12,
+          14,
+          18,
+          22,
+          26
+        ],
+        "greenRainDay": 7
+      }
     },
-    "weatherSeed1Legacy": {
-      "springRain": [
+    {
+      "name": "weather-seed-1-legacy",
+      "kind": "weather",
+      "seed": 1,
+      "useLegacyRandom": true,
+      "input": {
+        "weatherConditions": [
+          {
+            "season": 0,
+            "startDay": 1,
+            "endDay": 28,
+            "minRainDays": 4
+          }
+        ]
+      },
+      "expected": {
+        "springRain": [
+          3,
+          6,
+          8,
+          23,
+          25,
+          27
+        ],
+        "summerRain": [
+          3,
+          5,
+          6,
+          7,
+          13,
+          22,
+          24,
+          26
+        ],
+        "fallRain": [
+          13,
+          15,
+          17,
+          19
+        ],
+        "greenRainDay": 6
+      }
+    },
+    {
+      "name": "mine-chest-floor-10-new",
+      "kind": "mineChest",
+      "seed": 1,
+      "useLegacyRandom": false,
+      "input": {
+        "mineChestConditions": [
+          {
+            "floor": 10,
+            "itemName": "\u5DE5\u4F5C\u9774"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "floor": 10,
+          "item": "\u5DE5\u4F5C\u9774",
+          "matched": true
+        }
+      ]
+    },
+    {
+      "name": "mine-chest-floor-10-legacy",
+      "kind": "mineChest",
+      "seed": 1,
+      "useLegacyRandom": true,
+      "input": {
+        "mineChestConditions": [
+          {
+            "floor": 10,
+            "itemName": "\u6728\u5251"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "floor": 10,
+          "item": "\u6728\u5251",
+          "matched": true
+        }
+      ]
+    },
+    {
+      "name": "desert-festival-seed-1-new",
+      "kind": "desertFestival",
+      "seed": 1,
+      "useLegacyRandom": false,
+      "input": {
+        "desertFestivalCondition": {
+          "requireJas": false,
+          "requireLeah": false
+        }
+      },
+      "expected": {
+        "day15": [
+          "Jodi",
+          "Emily"
+        ],
+        "day16": [
+          "Evelyn",
+          "Emily"
+        ],
+        "day17": [
+          "Abigail",
+          "Pam"
+        ]
+      }
+    },
+    {
+      "name": "desert-festival-seed-1-legacy",
+      "kind": "desertFestival",
+      "seed": 1,
+      "useLegacyRandom": true,
+      "input": {
+        "desertFestivalCondition": {
+          "requireJas": false,
+          "requireLeah": false
+        }
+      },
+      "expected": {
+        "day15": [
+          "Harvey",
+          "Jodi"
+        ],
+        "day16": [
+          "Leah",
+          "Shane"
+        ],
+        "day17": [
+          "Sebastian",
+          "Caroline"
+        ]
+      }
+    },
+    {
+      "name": "fairy-seed-17-new",
+      "kind": "fairy",
+      "seed": 17,
+      "useLegacyRandom": false,
+      "input": {
+        "fairyConditions": [
+          {
+            "startYear": 1,
+            "startSeason": 0,
+            "startDay": 1,
+            "endYear": 1,
+            "endSeason": 2,
+            "endDay": 28,
+            "minOccurrences": 1
+          }
+        ]
+      },
+      "expected": {
+        "days": [
+          {
+            "year": 1,
+            "season": 0,
+            "day": 10,
+            "isBlocked": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "fairy-seed-137-legacy",
+      "kind": "fairy",
+      "seed": 137,
+      "useLegacyRandom": true,
+      "input": {
+        "fairyConditions": [
+          {
+            "startYear": 1,
+            "startSeason": 0,
+            "startDay": 1,
+            "endYear": 1,
+            "endSeason": 2,
+            "endDay": 28,
+            "minOccurrences": 1
+          }
+        ]
+      },
+      "expected": {
+        "days": []
+      }
+    },
+    {
+      "name": "monster-level-spring-5-new",
+      "kind": "monsterLevel",
+      "seed": 1,
+      "useLegacyRandom": false,
+      "input": {
+        "monsterLevelConditions": [
+          {
+            "startSeason": 0,
+            "endSeason": 0,
+            "startDay": 5,
+            "endDay": 5,
+            "startLevel": 1,
+            "endLevel": 40
+          }
+        ]
+      },
+      "expected": [
+        {
+          "description": "\u66255 1-40\u5C42\u65E0\u602A\u7269\u5C42",
+          "satisfied": true,
+          "absoluteStartDay": 5
+        }
+      ]
+    },
+    {
+      "name": "monster-level-spring-5-legacy",
+      "kind": "monsterLevel",
+      "seed": 1,
+      "useLegacyRandom": true,
+      "input": {
+        "monsterLevelConditions": [
+          {
+            "startSeason": 0,
+            "endSeason": 0,
+            "startDay": 5,
+            "endDay": 5,
+            "startLevel": 1,
+            "endLevel": 40
+          }
+        ]
+      },
+      "expected": [
+        {
+          "description": "\u66255 1-40\u5C42\u65E0\u602A\u7269\u5C42",
+          "satisfied": true,
+          "absoluteStartDay": 5
+        }
+      ]
+    },
+    {
+      "name": "cart-wild-horseradish-new",
+      "kind": "cart",
+      "seed": 2,
+      "useLegacyRandom": false,
+      "input": {
+        "cartConditions": [
+          {
+            "startYear": 1,
+            "startSeason": 0,
+            "startDay": 5,
+            "endYear": 1,
+            "endSeason": 2,
+            "endDay": 28,
+            "itemName": "\u91CE\u5C71\u8475",
+            "requireQty5": false,
+            "minOccurrences": 1
+          }
+        ]
+      },
+      "expected": {
+        "matches": [
+          {
+            "year": 1,
+            "season": 0,
+            "day": 14,
+            "absoluteDay": 14,
+            "itemName": "\u91CE\u5C71\u8475",
+            "quantity": 5,
+            "price": 900
+          }
+        ]
+      }
+    },
+    {
+      "name": "cart-wild-horseradish-legacy",
+      "kind": "cart",
+      "seed": 2,
+      "useLegacyRandom": true,
+      "input": {
+        "cartConditions": [
+          {
+            "startYear": 1,
+            "startSeason": 0,
+            "startDay": 5,
+            "endYear": 1,
+            "endSeason": 2,
+            "endDay": 28,
+            "itemName": "\u91CE\u5C71\u8475",
+            "requireQty5": false,
+            "minOccurrences": 1
+          }
+        ]
+      },
+      "expected": {
+        "matches": [
+          {
+            "year": 1,
+            "season": 1,
+            "day": 28,
+            "absoluteDay": 56,
+            "itemName": "\u91CE\u5C71\u8475",
+            "quantity": 1,
+            "price": 400
+          }
+        ]
+      }
+    }
+  ],
+  "searchCases": [
+    {
+      "name": "weather-spring-rain-4-new",
+      "request": {
+        "startSeed": 1,
+        "endSeed": 500,
+        "useLegacyRandom": false,
+        "weatherConditions": [
+          {
+            "season": 0,
+            "startDay": 1,
+            "endDay": 28,
+            "minRainDays": 4
+          }
+        ],
+        "fairyConditions": [],
+        "mineChestConditions": [],
+        "monsterLevelConditions": [],
+        "desertFestivalCondition": null,
+        "cartConditions": [],
+        "outputLimit": 3
+      },
+      "expected": [
         3,
-        6,
-        8,
-        23,
-        25,
-        27
-      ],
-      "summerRain": [
-        3,
-        5,
-        6,
-        7,
-        13,
-        22,
-        24,
-        26
-      ],
-      "fallRain": [
-        13,
+        4,
+        5
+      ]
+    },
+    {
+      "name": "weather-spring-rain-4-legacy",
+      "request": {
+        "startSeed": 1,
+        "endSeed": 500,
+        "useLegacyRandom": true,
+        "weatherConditions": [
+          {
+            "season": 0,
+            "startDay": 1,
+            "endDay": 28,
+            "minRainDays": 4
+          }
+        ],
+        "fairyConditions": [],
+        "mineChestConditions": [],
+        "monsterLevelConditions": [],
+        "desertFestivalCondition": null,
+        "cartConditions": [],
+        "outputLimit": 3
+      },
+      "expected": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "weather-and-mine-chest-new",
+      "request": {
+        "startSeed": 1,
+        "endSeed": 1000,
+        "useLegacyRandom": false,
+        "weatherConditions": [
+          {
+            "season": 0,
+            "startDay": 1,
+            "endDay": 28,
+            "minRainDays": 4
+          }
+        ],
+        "fairyConditions": [],
+        "mineChestConditions": [
+          {
+            "floor": 10,
+            "itemName": "\u5DE5\u4F5C\u9774"
+          }
+        ],
+        "monsterLevelConditions": [],
+        "desertFestivalCondition": null,
+        "cartConditions": [],
+        "outputLimit": 5
+      },
+      "expected": [
+        12,
         15,
         17,
-        19
-      ],
-      "greenRainDay": 6
-    },
-    "mineChestSeed1Floor10New": [
-      {
-        "floor": 10,
-        "item": "\u5DE5\u4F5C\u9774",
-        "matched": false
-      }
-    ],
-    "mineChestSeed1Floor10Legacy": [
-      {
-        "floor": 10,
-        "item": "\u6728\u5251",
-        "matched": false
-      }
-    ],
-    "desertFestivalSeed1New": {
-      "day15": [
-        "Jodi",
-        "Emily"
-      ],
-      "day16": [
-        "Evelyn",
-        "Emily"
-      ],
-      "day17": [
-        "Abigail",
-        "Pam"
+        28,
+        36
       ]
     },
-    "desertFestivalSeed1Legacy": {
-      "day15": [
-        "Harvey",
-        "Jodi"
-      ],
-      "day16": [
-        "Leah",
-        "Shane"
-      ],
-      "day17": [
-        "Sebastian",
-        "Caroline"
+    {
+      "name": "weather-and-desert-festival-legacy",
+      "request": {
+        "startSeed": 1,
+        "endSeed": 2000,
+        "useLegacyRandom": true,
+        "weatherConditions": [
+          {
+            "season": 0,
+            "startDay": 1,
+            "endDay": 28,
+            "minRainDays": 4
+          }
+        ],
+        "fairyConditions": [],
+        "mineChestConditions": [],
+        "monsterLevelConditions": [],
+        "desertFestivalCondition": {
+          "requireJas": false,
+          "requireLeah": true
+        },
+        "cartConditions": [],
+        "outputLimit": 5
+      },
+      "expected": [
+        1,
+        20,
+        21,
+        28,
+        29
       ]
-    },
-    "fairySeed1New": {
-      "days": []
-    },
-    "monsterLevelSeed1New": [
-      {
-        "description": "\u66255 1-40\u5C42\u65E0\u602A\u7269\u5C42",
-        "satisfied": true,
-        "absoluteStartDay": 5
-      }
-    ],
-    "cartSeed1New": {
-      "itemName": "\u91CE\u5C71\u8475",
-      "matches": []
     }
-  },
-  "searches": {
-    "weatherSpringRain4Seeds1To500New": [
-      3,
-      4,
-      5
-    ],
-    "weatherSpringRain4Seeds1To500Legacy": [
-      1,
-      2,
-      3
-    ]
-  }
+  ]
 }
