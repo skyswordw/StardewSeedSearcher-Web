@@ -1,4 +1,4 @@
-import { searchSeedsAsync, type SearchMessage, type SearchRequest } from './search-core'
+import { searchSeedsAsync, type SearchMessage, type SearchRequest } from '../search-core'
 
 type WorkerInbound =
   | { type: 'start-search'; request: SearchRequest; jobId: string }

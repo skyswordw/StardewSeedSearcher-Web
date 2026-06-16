@@ -41,6 +41,10 @@ npm run build
 
 构建产物会输出到 `dist/`。
 
+## 一键部署
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/skyswordw/StardewSeedSearcher-Web)
+
 ## 常用命令
 
 ```bash
@@ -65,9 +69,10 @@ npm run test -- src/search-core/search.test.ts
 ## 项目结构
 
 ```text
-src/App.tsx                 主界面
-src/App.css                 页面样式
-src/search.worker.ts        浏览器搜索任务入口
+src/app/                    React 主界面、组件、UI 类型和页面样式
+src/runtime/                浏览器兼容性辅助函数
+src/workers/                浏览器搜索任务入口
+src/i18n/                   中英文界面文案
 src/search-core/            确定性搜索逻辑、预测器、fixture 和测试
 src/assets/                 应用内图片资源
 e2e/                        Playwright 功能和视觉测试

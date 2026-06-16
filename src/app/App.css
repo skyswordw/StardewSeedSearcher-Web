@@ -51,7 +51,7 @@ button:disabled {
   position: relative;
   background:
     linear-gradient(rgba(245, 236, 216, 0.72), rgba(245, 236, 216, 0.9)),
-    url("./assets/background.png") center top / cover no-repeat;
+    url("../assets/background.png") center top / cover no-repeat;
 }
 
 .github-corner {

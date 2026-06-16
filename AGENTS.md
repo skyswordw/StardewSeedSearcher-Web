@@ -4,9 +4,10 @@
 
 This is a React + TypeScript + Vite static app for StardewSeedSearcher Web.
 
-- `src/App.tsx` and `src/App.css` contain the main UI.
+- `src/app/` contains the main UI, UI components, UI-only types, formatters, and styles.
 - `src/search-core/` contains deterministic search logic, predictors, fixtures, and Vitest coverage.
-- `src/search.worker.ts` runs searches in a Web Worker.
+- `src/workers/search.worker.ts` runs searches in a Web Worker.
+- `src/runtime/` contains browser compatibility helpers, and `src/i18n/` contains localized UI copy.
 - `src/assets/` stores bundled images; `public/upstream/` preserves upstream license/README snapshots.
 - `e2e/` contains Playwright functional and visual audit tests.
 - `tools/oracle/` and `tools/bench/` contain fixture generation and benchmark tooling.

@@ -1,71 +1,37 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   BookOpen,
-  CheckCircle2,
-  Clipboard,
   Download,
   Info,
-  Plus,
   Search,
   Square,
   Trash2,
-  X,
 } from 'lucide-react'
 import './App.css'
-import logo from './assets/logo.png'
-import { copyTextToClipboard, createJobId, randomInt } from './browserCompat'
-import { copy, localeNames, type AppCopy, type Locale } from './i18n'
+import logo from '../assets/logo.png'
+import { copy, localeNames, type Locale } from '../i18n'
+import { copyTextToClipboard, createJobId, randomInt } from '../runtime/browserCompat'
 import {
   allCartItemNames,
   mineChestFloors,
   mineChestItems,
   type CartCondition,
   type DesertFestivalCondition,
-  type EnabledFeatures,
   type FairyCondition,
   type MineChestCondition,
   type MonsterLevelCondition,
-  type Season,
   type SearchMessage,
   type SearchRequest,
-  type SeedDetails,
   type WeatherCondition,
-} from './search-core'
+} from '../search-core'
+import { AddButton, FeatureSection, IconButton, NumberField, SeasonSelect } from './components/FeatureSection'
+import { ResultsPanel } from './components/ResultsPanel'
+import { SeedDrawer } from './components/SeedDrawer'
+import { formatStatus } from './formatters'
+import { removeAt, updateAt } from './formUtils'
+import type { FeatureStatView, FoundSeed, SearchStatus } from './types'
 
 const INT_MAX = 2_147_483_647
-
-interface FoundSeed {
-  seed: number
-  details: SeedDetails
-  enabled: EnabledFeatures
-}
-
-interface FeatureStatView {
-  name: string
-  passCount: number
-}
-
-type SearchStatus =
-  | { type: 'idle' }
-  | { type: 'searching'; start: number; end: number }
-  | { type: 'stopping' }
-  | { type: 'stopped'; totalFound: number }
-  | { type: 'completed'; totalFound: number }
-  | { type: 'copyFailed' }
-
-type FeatureId = 'weather' | 'fairy' | 'mineChest' | 'monsterLevel' | 'desertFestival' | 'cart'
-
-const featureStatNames: Record<string, FeatureId> = {
-  天气: 'weather',
-  天气预测: 'weather',
-  仙子: 'fairy',
-  仙子预测: 'fairy',
-  矿井宝箱: 'mineChest',
-  怪物层: 'monsterLevel',
-  沙漠节: 'desertFestival',
-  猪车: 'cart',
-  猪车预测: 'cart',
-}
 
 function App() {
   const [locale, setLocale] = useState<Locale>('zh')
@@ -181,7 +147,7 @@ function App() {
     }
 
     const request = buildRequest()
-    const worker = workerRef.current ?? new Worker(new URL('./search.worker.ts', import.meta.url), { type: 'module' })
+    const worker = workerRef.current ?? new Worker(new URL('../workers/search.worker.ts', import.meta.url), { type: 'module' })
     workerRef.current = worker
     const jobId = createJobId()
     activeJobId.current = jobId
@@ -247,7 +213,7 @@ function App() {
     }
   }
 
-  function submitForm(event: React.FormEvent) {
+  function submitForm(event: FormEvent) {
     event.preventDefault()
     if (isSearching) stopSearch()
     else startSearch()
@@ -501,67 +467,23 @@ function App() {
           </div>
         </section>
 
-        <aside className="panel results-panel" data-testid="results-panel">
-          <h2>{t.statusTitle}</h2>
-          <div className="status-card">
-            <p data-testid="status-message">{statusMessage}</p>
-            {rangeBadge && <span className="range-badge">{rangeBadge}</span>}
-            <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, progress)} data-testid="progress">
-              <div className="progress-fill" style={{ width: `${Math.min(100, progress)}%` }}>
-                {progress}%
-              </div>
-            </div>
-          </div>
-          <div className="metric-grid" data-testid="metric-grid">
-            <Metric label={t.checked} value={checkedCount.toLocaleString()} />
-            <Metric label={t.totalRange} value={totalCount.toLocaleString()} />
-            <Metric label={t.found} value={foundSeeds.length.toLocaleString()} />
-            <Metric label={t.speed} value={`${speed.toLocaleString()}/s`} />
-            <Metric label={t.elapsed} value={formatTime(elapsed)} />
-            <Metric label={t.eta} value={speed > 0 ? formatTime((totalCount - checkedCount) / speed) : '--'} />
-          </div>
-
-          <section className="analysis">
-            <h3>{t.statsTitle}</h3>
-            <div className="analysis-row">
-              <span>{t.stoppedEarly}</span>
-              <strong>{stoppedEarly === null ? t.unknown : stoppedEarly ? t.yes : t.no}</strong>
-            </div>
-            {featureStats.length === 0 ? (
-              <p className="muted">{t.statsPlaceholder}</p>
-            ) : (
-              featureStats.map((stat) => (
-                <div className="analysis-row" key={stat.name}>
-                  <span>{formatFeatureStatName(stat.name, t)}</span>
-                  <strong>{stat.passCount.toLocaleString()}</strong>
-                </div>
-              ))
-            )}
-          </section>
-
-          <section className="seed-results" data-testid="results">
-            <h3>{t.resultsTitle}</h3>
-            <p className="muted">{t.resultsCount(foundSeeds.length)}</p>
-            <div className="seed-list">
-              {foundSeeds.slice(0, 20).map((item) => (
-                <div className="seed-item" data-testid="seed-result" key={item.seed}>
-                  <span>
-                    {t.seedLabel}: {item.seed}
-                  </span>
-                  <div>
-                    <button type="button" data-testid="seed-details" onClick={() => setSelectedSeed(item)}>
-                      {t.intro}
-                    </button>
-                    <button type="button" data-testid="seed-copy" onClick={() => copySeed(item.seed)}>
-                      {t.copy}
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {foundSeeds.length === 0 && <p className="empty">{t.noResults}</p>}
-            </div>
-          </section>
-        </aside>
+        <ResultsPanel
+          t={t}
+          statusMessage={statusMessage}
+          rangeBadge={rangeBadge}
+          progress={progress}
+          checkedCount={checkedCount}
+          totalCount={totalCount}
+          foundSeeds={foundSeeds}
+          speed={speed}
+          elapsed={elapsed}
+          stoppedEarly={stoppedEarly}
+          featureStats={featureStats}
+          onSelectSeed={setSelectedSeed}
+          onCopySeed={(seed) => {
+            void copySeed(seed)
+          }}
+        />
       </form>
 
       {selectedSeed && <SeedDrawer found={selectedSeed} t={t} locale={locale} onClose={() => setSelectedSeed(null)} onCopy={() => copySeed(selectedSeed.seed)} />}
@@ -569,291 +491,10 @@ function App() {
   )
 }
 
-function FeatureSection({
-  featureId,
-  title,
-  note,
-  enabled,
-  onToggle,
-  children,
-}: {
-  featureId: FeatureId
-  title: string
-  note: string
-  enabled: boolean
-  onToggle: (enabled: boolean) => void
-  children: React.ReactNode
-}) {
-  return (
-    <section className={`feature-section ${enabled ? 'enabled' : ''}`} data-testid={`feature-section-${featureId}`}>
-      <div className="feature-header">
-        <label className="check title-check">
-          <input
-            type="checkbox"
-            checked={enabled}
-            aria-label={title}
-            data-testid={`feature-toggle-${featureId}`}
-            onChange={(event) => onToggle(event.target.checked)}
-          />
-          {title}
-        </label>
-        <span>{note}</span>
-      </div>
-      {enabled && <div className="condition-list">{children}</div>}
-    </section>
-  )
-}
-
-function NumberField({
-  label,
-  testId,
-  value,
-  min,
-  max,
-  compact,
-  onChange,
-}: {
-  label: string
-  testId?: string
-  value: number
-  min?: number
-  max?: number
-  compact?: boolean
-  onChange: (value: number) => void
-}) {
-  return (
-    <label className={`field ${compact ? 'compact' : ''}`}>
-      <span>{label}</span>
-      <input data-testid={testId} type="number" min={min} max={max} value={value} onChange={(event) => onChange(Number.parseInt(event.target.value, 10) || 0)} />
-    </label>
-  )
-}
-
-function SeasonSelect({
-  label,
-  seasonNames,
-  value,
-  seasons,
-  onChange,
-}: {
-  label: string
-  seasonNames: readonly string[]
-  value: number
-  seasons: (0 | 1 | 2 | 3)[]
-  onChange: (season: 0 | 1 | 2 | 3) => void
-}) {
-  return (
-    <label className="field compact">
-      <span>{label}</span>
-      <select value={value} onChange={(event) => onChange(Number(event.target.value) as 0 | 1 | 2 | 3)}>
-        {seasons.map((season) => (
-          <option value={season} key={season}>
-            {seasonNames[season]}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
-}
-
-function AddButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
-  return (
-    <button type="button" className="add-button" data-testid="add-condition" onClick={onClick}>
-      <Plus size={16} /> {children}
-    </button>
-  )
-}
-
-function IconButton({ label, icon, onClick }: { label: string; icon: React.ReactNode; onClick: () => void }) {
-  return (
-    <button type="button" className="icon-button" aria-label={label} title={label} data-testid="condition-remove" onClick={onClick}>
-      {icon}
-    </button>
-  )
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  )
-}
-
 function GithubMarkPath() {
   return (
     <path d="M8 0.2a7.9 7.9 0 0 0-2.5 15.4c0.4 0.1 0.5-0.2 0.5-0.4v-1.5c-2.1 0.5-2.5-0.9-2.5-0.9-0.3-0.8-0.8-1-0.8-1-0.7-0.5 0-0.5 0-0.5 0.7 0.1 1.1 0.8 1.1 0.8 0.7 1.1 1.7 0.8 2.1 0.6 0.1-0.5 0.3-0.8 0.5-1-1.7-0.2-3.4-0.8-3.4-3.8 0-0.8 0.3-1.5 0.8-2.1-0.1-0.2-0.3-1 0.1-2 0 0 0.6-0.2 2.1 0.8a7.1 7.1 0 0 1 3.8 0c1.5-1 2.1-0.8 2.1-0.8 0.4 1 0.2 1.8 0.1 2 0.5 0.6 0.8 1.3 0.8 2.1 0 3-1.8 3.6-3.4 3.8 0.3 0.2 0.5 0.7 0.5 1.4v2.1c0 0.2 0.1 0.5 0.5 0.4A7.9 7.9 0 0 0 8 0.2Z" />
   )
-}
-
-function SeedDrawer({
-  found,
-  t,
-  locale,
-  onClose,
-  onCopy,
-}: {
-  found: FoundSeed
-  t: AppCopy
-  locale: Locale
-  onClose: () => void
-  onCopy: () => void
-}) {
-  const { details, enabled } = found
-  return (
-    <div className="drawer-backdrop" role="dialog" aria-modal="true" aria-label={`${t.seedLabel} ${found.seed} ${t.intro}`} data-testid="seed-detail">
-      <aside className="seed-drawer" data-testid="seed-drawer">
-        <header>
-          <div>
-            <span>{t.drawerTitle}</span>
-            <h2>{found.seed}</h2>
-          </div>
-          <div className="drawer-actions">
-            <button type="button" onClick={onCopy}>
-              <Clipboard size={16} /> {t.copy}
-            </button>
-            <button type="button" aria-label={t.close} onClick={onClose}>
-              <X size={18} />
-            </button>
-          </div>
-        </header>
-
-        {enabled.weather && details.weather && (
-          <DetailSection title={t.detailSections.weather}>
-            <p>
-              {t.weatherDetails.greenRain}: {t.seasons[1]} {details.weather.greenRainDay}
-            </p>
-            <p>
-              {t.weatherDetails.springRain}: {formatDayList(details.weather.springRain, t)}
-            </p>
-            <p>
-              {t.weatherDetails.summerRain}: {formatDayList(details.weather.summerRain, t)}
-            </p>
-            <p>
-              {t.weatherDetails.fallRain}: {formatDayList(details.weather.fallRain, t)}
-            </p>
-          </DetailSection>
-        )}
-        {enabled.fairy && details.fairy && (
-          <DetailSection title={t.detailSections.fairy}>
-            {details.fairy.days.length === 0 ? (
-              <p>{t.noFairyRecords}</p>
-            ) : (
-              details.fairy.days.map((day, index) => (
-                <p key={index}>
-                  {formatDisplayDate(day.year, day.season, day.day, t, locale)} {day.isBlocked ? t.fairyBlocked : t.fairyAvailable}
-                </p>
-              ))
-            )}
-          </DetailSection>
-        )}
-        {enabled.mineChest && details.mineChest && (
-          <DetailSection title={t.detailSections.mineChest}>
-            {details.mineChest.map((item) => (
-              <p key={item.floor}>
-                {locale === 'en' ? `Floor ${item.floor}` : `${item.floor}层`}: {item.item} {item.matched ? <CheckCircle2 size={14} /> : null}
-              </p>
-            ))}
-          </DetailSection>
-        )}
-        {enabled.monsterLevel && details.monsterLevel && (
-          <DetailSection title={t.detailSections.monsterLevel}>
-            {details.monsterLevel.map((item, index) => (
-              <p key={index}>{item.description}</p>
-            ))}
-          </DetailSection>
-        )}
-        {enabled.desertFestival && details.desertFestival && (
-          <DetailSection title={t.detailSections.desertFestival}>
-            <p>
-              {t.seasons[0]} 15: {formatTextList(details.desertFestival.day15)}
-            </p>
-            <p>
-              {t.seasons[0]} 16: {formatTextList(details.desertFestival.day16)}
-            </p>
-            <p>
-              {t.seasons[0]} 17: {formatTextList(details.desertFestival.day17)}
-            </p>
-          </DetailSection>
-        )}
-        {enabled.cart && details.cart && (
-          <DetailSection title={t.detailSections.cart}>
-            {details.cart.matches.length === 0 ? (
-              <p>{t.noCartMatches}</p>
-            ) : (
-              details.cart.matches.map((match, index) => (
-                <p key={index}>
-                  {formatDisplayDate(match.year, match.season, match.day, t, locale)}: {match.itemName} x{match.quantity === -1 ? t.unlimited : match.quantity}, {match.price}g
-                </p>
-              ))
-            )}
-          </DetailSection>
-        )}
-      </aside>
-    </div>
-  )
-}
-
-function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="detail-section">
-      <h3>{title}</h3>
-      {children}
-    </section>
-  )
-}
-
-function updateAt<T>(items: T[], setItems: (items: T[]) => void, index: number, patch: Partial<T>) {
-  setItems(items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)))
-}
-
-function removeAt<T>(items: T[], setItems: (items: T[]) => void, index: number) {
-  setItems(items.filter((_, itemIndex) => itemIndex !== index))
-}
-
-function formatStatus(status: SearchStatus, t: AppCopy): string {
-  if (status.type === 'searching') return t.searching(status.start.toLocaleString(), status.end.toLocaleString())
-  if (status.type === 'stopping') return t.stopping
-  if (status.type === 'stopped') return t.stopped(status.totalFound)
-  if (status.type === 'completed') return t.completed(status.totalFound)
-  if (status.type === 'copyFailed') return t.copyFailed
-  return t.idleStatus
-}
-
-function formatFeatureStatName(name: string, t: AppCopy): string {
-  const featureId = featureStatNames[name]
-  return featureId ? t.features[featureId] : name
-}
-
-function formatDisplayDate(year: number, season: Season, day: number, t: AppCopy, locale: Locale): string {
-  if (locale === 'en') return `Year ${year}, ${t.seasons[season]} ${day}`
-  return `第${year}年${t.seasons[season]}${day}日`
-}
-
-function formatDayList(days: number[], t: AppCopy): string {
-  return days.length > 0 ? days.join(', ') : t.weatherDetails.none
-}
-
-function formatTextList(items: string[]): string {
-  return items.join(', ')
-}
-
-function formatTime(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return '--'
-  if (seconds < 60) return `${seconds.toFixed(1)}s`
-  const days = Math.floor(seconds / 86_400)
-  const hours = Math.floor((seconds % 86_400) / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  const sec = Math.floor(seconds % 60)
-  return [
-    days > 0 ? `${days}d` : '',
-    hours > 0 ? `${hours}h` : '',
-    minutes > 0 ? `${minutes}m` : '',
-    sec > 0 || seconds < 60 ? `${sec}s` : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
 }
 
 export default App
