@@ -20,8 +20,7 @@
 | 上游来源 | `CuiYinYin2023/StardewSeedSearcher` |
 | 移植基线 | `V1.0` |
 | 星露谷版本 | `1.6.15` |
-| 结果平台 | PC / Android / iOS |
-| Switch JKISS 随机逻辑 | 暂不包含在首版范围 |
+| 当前预测目标 | PC / Android / iOS；暂不覆盖 Switch 版随机逻辑 |
 
 ## 快速开始
 
