@@ -2,7 +2,7 @@
   "name": "stardew-seed-searcher-web",
   "private": true,
   "version": "0.1.0",
-  "description": "Pure frontend React/Web Worker port of CuiYinYin2023/StardewSeedSearcher.",
+  "description": "Unofficial pure frontend React/Web Worker port based on CuiYinYin2023/StardewSeedSearcher.",
   "type": "module",
   "scripts": {
     "dev": "vite",

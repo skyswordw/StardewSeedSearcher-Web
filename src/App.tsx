@@ -13,7 +13,6 @@ import {
 } from 'lucide-react'
 import './App.css'
 import logo from './assets/logo.png'
-import avatar from './assets/avatar.png'
 import {
   allCartItemNames,
   formatGameDate,
@@ -237,14 +236,14 @@ function App() {
 
   function exportResults() {
     const content = [
-      '星露谷物语 - 脆音音种子搜索器 Web 版',
+      'StardewSeedSearcher Web - 星露谷物语种子搜索器 Web 版',
       `搜索范围：${startSeed} - ${calculatedRange.endSeed}`,
       `旧随机模式：${useLegacyRandom ? '是' : '否'}`,
       `找到种子数：${foundSeeds.length}`,
       '',
       ...foundSeeds.map((item) => String(item.seed)),
       '',
-      'Derived from CuiYinYin2023/StardewSeedSearcher V1.0.',
+      '基于 CuiYinYin2023/StardewSeedSearcher V1.0 的非官方 Web 移植版。',
     ].join('\n')
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -269,12 +268,9 @@ function App() {
           <img src={logo} alt="Stardew Valley" className="brand-icon" />
         </a>
         <div>
-          <h1>星露谷物语</h1>
-          <p>脆音音种子搜索器 Web 版</p>
+          <h1>StardewSeedSearcher Web</h1>
+          <p>星露谷物语种子搜索器 Web 版</p>
         </div>
-        <a href="https://space.bilibili.com/349111916" target="_blank">
-          <img src={avatar} alt="脆音音头像" className="brand-icon" />
-        </a>
       </header>
 
       <form className="tool-grid" data-testid="tool-grid" onSubmit={submitForm}>
@@ -286,7 +282,7 @@ function App() {
             <ul>
               <li>Web 版在浏览器 Web Worker 中搜索，不需要下载或启动本地 C# 服务。</li>
               <li>搜索开始后按钮会变为停止搜索，点击即可取消当前任务。</li>
-              <li>预测目标与原项目 V1.0 对齐；如遇预测错误，请同时记录搜索条件和种子号。</li>
+              <li>基于 CuiYinYin2023/StardewSeedSearcher V1.0 的非官方 Web 移植版；如遇预测错误，请同时记录搜索条件和种子号。</li>
             </ul>
           </details>
 

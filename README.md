@@ -1,10 +1,14 @@
 # StardewSeedSearcher Web
 
-纯前端 Web 版星露谷物语种子搜索器。项目 derived from
+StardewSeedSearcher Web 是纯前端星露谷物语种子搜索器，基于
 [CuiYinYin2023/StardewSeedSearcher](https://github.com/CuiYinYin2023/StardewSeedSearcher)
-`V1.0 / 0e7d0df08f14f2c342747ca9a22c90d8edc9d892`，保留原项目 MIT License 与原作者版权声明。
+`V1.0 / 0e7d0df08f14f2c342747ca9a22c90d8edc9d892` 的非官方 Web 移植版，保留原项目 MIT License 与原作者版权声明。
 
 当前首版目标是覆盖原项目 V1.0 已有功能，并把搜索任务移到浏览器 Web Worker 中运行，部署形态为静态站点，不需要用户下载 C# 后端或本地启动服务。
+
+## Disclaimer
+
+This is an unofficial Web port. It is not affiliated with, endorsed by, or maintained by the upstream author. Upstream copyright and MIT License are preserved.
 
 ## 功能范围
 
