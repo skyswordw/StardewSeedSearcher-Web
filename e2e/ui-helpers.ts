@@ -2,14 +2,16 @@ import { expect, type Page } from '@playwright/test'
 
 export const productTitlePattern = /stardew.*seed.*searcher|seed.*searcher|星露谷物语|种子搜索器/i
 
-export const featureNames = [
-  '天气筛选',
-  '仙子筛选',
-  '矿井混合宝箱筛选',
-  '矿井怪物层筛选',
-  '沙漠节商人筛选',
-  '猪车筛选',
+export const featureIds = [
+  'weather',
+  'fairy',
+  'mineChest',
+  'monsterLevel',
+  'desertFestival',
+  'cart',
 ] as const
+
+export type FeatureId = (typeof featureIds)[number]
 
 export const dynamicScreenshotMasks = (page: Page) => [
   page.getByTestId('connection-status'),
@@ -28,12 +30,12 @@ export async function openApp(page: Page, options: { mockWorker?: boolean } = {}
   await expect(page.getByRole('heading', { name: productTitlePattern }).first()).toBeVisible()
 }
 
-export function featureToggle(page: Page, name: string) {
-  return page.getByRole('checkbox', { name })
+export function featureToggle(page: Page, featureId: FeatureId) {
+  return page.getByTestId(`feature-toggle-${featureId}`)
 }
 
-export function featureSection(page: Page, name: string) {
-  return page.getByTestId(`feature-section-${name}`)
+export function featureSection(page: Page, featureId: FeatureId) {
+  return page.getByTestId(`feature-section-${featureId}`)
 }
 
 export function conditionRows(page: Page) {
@@ -45,14 +47,14 @@ export function resultRows(page: Page) {
 }
 
 export async function configureTinySeedRange(page: Page) {
-  await page.getByLabel('起始种子').fill('1')
-  await page.getByLabel('输出上限').fill('1')
-  await page.getByLabel('搜索范围').selectOption('100000')
+  await page.getByTestId('start-seed').fill('1')
+  await page.getByTestId('output-limit').fill('1')
+  await page.getByTestId('search-range').selectOption('100000')
 }
 
 export async function setEveryFeature(page: Page, enabled: boolean) {
-  for (const name of featureNames) {
-    const toggle = featureToggle(page, name)
+  for (const featureId of featureIds) {
+    const toggle = featureToggle(page, featureId)
     if ((await toggle.isChecked()) !== enabled) {
       await toggle.setChecked(enabled)
     }
@@ -65,15 +67,15 @@ export async function startSearch(page: Page) {
 }
 
 export async function waitForRunningState(page: Page) {
-  await expect(page.getByTestId('connection-status')).toHaveText(/Worker 搜索中/)
-  await expect(page.getByTestId('status-message')).toContainText('正在搜索')
-  await expect(page.getByTestId('start-search')).toContainText('停止搜索')
+  await expect(page.getByTestId('connection-status')).toHaveText(/Worker 搜索中|Worker searching/)
+  await expect(page.getByTestId('status-message')).toContainText(/正在搜索|Searching/)
+  await expect(page.getByTestId('start-search')).toContainText(/停止搜索|Stop search/)
 }
 
 export async function waitForCompleteState(page: Page) {
-  await expect(page.getByTestId('connection-status')).toHaveText(/搜索完成/)
-  await expect(page.getByTestId('status-message')).toContainText(/搜索完成|找到/)
-  await expect(page.getByTestId('start-search')).toContainText('开始搜索')
+  await expect(page.getByTestId('connection-status')).toHaveText(/搜索完成|Search complete/)
+  await expect(page.getByTestId('status-message')).toContainText(/搜索完成|找到|Search complete|Found/)
+  await expect(page.getByTestId('start-search')).toContainText(/开始搜索|Start search/)
   await expect(resultRows(page).first()).toBeVisible()
 }
 
@@ -95,11 +97,11 @@ export async function assertNoHorizontalOverflow(page: Page) {
 }
 
 export async function openFirstSeedDrawer(page: Page) {
-  await resultRows(page).first().getByRole('button', { name: '简介' }).click()
+  await resultRows(page).first().getByTestId('seed-details').click()
   const drawer = page.getByTestId('seed-detail')
   await expect(drawer).toBeVisible()
   await expect(drawer).toHaveAttribute('role', 'dialog')
-  await expect(drawer).toContainText('种子简介')
+  await expect(drawer).toContainText(/种子简介|Seed details/)
   return drawer
 }
 

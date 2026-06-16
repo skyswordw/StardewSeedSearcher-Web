@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   BookOpen,
   CheckCircle2,
@@ -14,18 +14,18 @@ import {
 import './App.css'
 import logo from './assets/logo.png'
 import { copyTextToClipboard, createJobId, randomInt } from './browserCompat'
+import { copy, localeNames, type AppCopy, type Locale } from './i18n'
 import {
   allCartItemNames,
-  formatGameDate,
   mineChestFloors,
   mineChestItems,
-  seasonNames,
   type CartCondition,
   type DesertFestivalCondition,
   type EnabledFeatures,
   type FairyCondition,
   type MineChestCondition,
   type MonsterLevelCondition,
+  type Season,
   type SearchMessage,
   type SearchRequest,
   type SeedDetails,
@@ -33,13 +33,6 @@ import {
 } from './search-core'
 
 const INT_MAX = 2_147_483_647
-const searchRangeOptions = [
-  { label: '10万', value: '100000' },
-  { label: '100万', value: '1000000' },
-  { label: '1000万', value: '10000000' },
-  { label: '1亿', value: '100000000' },
-  { label: '最大', value: 'max' },
-]
 
 interface FoundSeed {
   seed: number
@@ -52,7 +45,31 @@ interface FeatureStatView {
   passCount: number
 }
 
+type SearchStatus =
+  | { type: 'idle' }
+  | { type: 'searching'; start: number; end: number }
+  | { type: 'stopping' }
+  | { type: 'stopped'; totalFound: number }
+  | { type: 'completed'; totalFound: number }
+  | { type: 'copyFailed' }
+
+type FeatureId = 'weather' | 'fairy' | 'mineChest' | 'monsterLevel' | 'desertFestival' | 'cart'
+
+const featureStatNames: Record<string, FeatureId> = {
+  天气: 'weather',
+  天气预测: 'weather',
+  仙子: 'fairy',
+  仙子预测: 'fairy',
+  矿井宝箱: 'mineChest',
+  怪物层: 'monsterLevel',
+  沙漠节: 'desertFestival',
+  猪车: 'cart',
+  猪车预测: 'cart',
+}
+
 function App() {
+  const [locale, setLocale] = useState<Locale>('zh')
+  const t = copy[locale]
   const [startSeed, setStartSeed] = useState(1)
   const [searchRange, setSearchRange] = useState('100000')
   const [loopSearch, setLoopSearch] = useState(true)
@@ -95,7 +112,7 @@ function App() {
 
   const [isSearching, setIsSearching] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'running' | 'complete' | 'error'>('idle')
-  const [statusMessage, setStatusMessage] = useState('等待搜索')
+  const [searchStatus, setSearchStatus] = useState<SearchStatus>({ type: 'idle' })
   const [checkedCount, setCheckedCount] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const [progress, setProgress] = useState(0)
@@ -104,12 +121,17 @@ function App() {
   const [featureStats, setFeatureStats] = useState<FeatureStatView[]>([])
   const [foundSeeds, setFoundSeeds] = useState<FoundSeed[]>([])
   const [selectedSeed, setSelectedSeed] = useState<FoundSeed | null>(null)
-  const [rangeBadge, setRangeBadge] = useState('')
+  const [activeRange, setActiveRange] = useState<{ start: number; end: number } | null>(null)
   const [stoppedEarly, setStoppedEarly] = useState<boolean | null>(null)
 
   const workerRef = useRef<Worker | null>(null)
   const activeJobId = useRef<string | null>(null)
   const savedStartSeed = useRef(1)
+
+  useEffect(() => {
+    document.documentElement.lang = locale === 'en' ? 'en' : 'zh-CN'
+    document.title = `StardewSeedSearcher Web - ${t.subtitle}`
+  }, [locale, t.subtitle])
 
   const calculatedRange = useMemo(() => {
     const range = searchRange === 'max' ? INT_MAX - startSeed + 1 : Number.parseInt(searchRange, 10)
@@ -117,20 +139,23 @@ function App() {
     return { range, endSeed }
   }, [searchRange, startSeed])
 
+  const statusMessage = useMemo(() => formatStatus(searchStatus, t), [searchStatus, t])
+  const rangeBadge = activeRange ? t.rangeBadge(activeRange.start.toLocaleString(), activeRange.end.toLocaleString()) : ''
+
   function validate(): string | null {
-    if (!Number.isFinite(startSeed) || startSeed < 1 || startSeed > INT_MAX) return `起始种子必须在 1 ~ ${INT_MAX} 之间`
-    if (outputLimit < 1 || outputLimit > 500) return '输出数量必须在 1-500 之间'
+    if (!Number.isFinite(startSeed) || startSeed < 1 || startSeed > INT_MAX) return t.validation.startSeed(INT_MAX)
+    if (outputLimit < 1 || outputLimit > 500) return t.validation.outputLimit
     if (!weatherEnabled && !fairyEnabled && !mineChestEnabled && !monsterLevelEnabled && !desertFestivalEnabled && !cartEnabled) {
-      return '请至少启用一个筛选条件'
+      return t.validation.featureRequired
     }
     if (weatherEnabled) {
       for (const condition of weatherConditions) {
-        if (condition.startDay > condition.endDay) return '天气错误：起始日期不能大于结束日期'
-        if (condition.minRainDays > condition.endDay - condition.startDay + 1) return '天气错误：雨天数不能超过范围总天数'
+        if (condition.startDay > condition.endDay) return t.validation.weatherDateOrder
+        if (condition.minRainDays > condition.endDay - condition.startDay + 1) return t.validation.weatherRainRange
       }
     }
-    if (fairyEnabled && fairyConditions.some((condition) => condition.minOccurrences < 1)) return '仙子错误：出现次数必须大于 0'
-    if (cartEnabled && cartConditions.some((condition) => !condition.itemName)) return '猪车错误：请选择物品'
+    if (fairyEnabled && fairyConditions.some((condition) => condition.minOccurrences < 1)) return t.validation.fairyOccurrences
+    if (cartEnabled && cartConditions.some((condition) => !condition.itemName)) return t.validation.cartItem
     return null
   }
 
@@ -172,8 +197,8 @@ function App() {
     setSpeed(0)
     setElapsed(0)
     setStoppedEarly(null)
-    setRangeBadge(`种子范围: ${request.startSeed.toLocaleString()}-${request.endSeed.toLocaleString()}`)
-    setStatusMessage(`正在搜索: ${request.startSeed.toLocaleString()}-${request.endSeed.toLocaleString()}`)
+    setActiveRange({ start: request.startSeed, end: request.endSeed })
+    setSearchStatus({ type: 'searching', start: request.startSeed, end: request.endSeed })
     setConnectionStatus('running')
     setIsSearching(true)
 
@@ -187,7 +212,7 @@ function App() {
 
   function stopSearch() {
     workerRef.current?.postMessage({ type: 'cancel-search', jobId: activeJobId.current })
-    setStatusMessage('正在停止搜索...')
+    setSearchStatus({ type: 'stopping' })
   }
 
   function setRandomStartSeed() {
@@ -213,9 +238,7 @@ function App() {
       return
     }
     if (message.type === 'complete') {
-      setStatusMessage(
-        message.cancelled ? `搜索已停止，共找到 ${message.totalFound} 个符合条件的种子` : `搜索完成！找到 ${message.totalFound} 个符合条件的种子`,
-      )
+      setSearchStatus(message.cancelled ? { type: 'stopped', totalFound: message.totalFound } : { type: 'completed', totalFound: message.totalFound })
       setIsSearching(false)
       setConnectionStatus(message.cancelled ? 'idle' : 'complete')
       setStoppedEarly(!message.cancelled && message.totalFound >= request.outputLimit)
@@ -235,14 +258,14 @@ function App() {
 
   function exportResults() {
     const content = [
-      'StardewSeedSearcher Web - 星露谷物语种子搜索器 Web 版',
-      `搜索范围：${startSeed} - ${calculatedRange.endSeed}`,
-      `旧随机模式：${useLegacyRandom ? '是' : '否'}`,
-      `找到种子数：${foundSeeds.length}`,
+      t.exportLines.title,
+      t.exportLines.range(startSeed, calculatedRange.endSeed),
+      t.exportLines.legacy(useLegacyRandom),
+      t.exportLines.found(foundSeeds.length),
       '',
       ...foundSeeds.map((item) => String(item.seed)),
       '',
-      '基于 CuiYinYin2023/StardewSeedSearcher V1.0 的非官方 Web 移植版。',
+      t.exportLines.attribution,
     ].join('\n')
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -257,21 +280,34 @@ function App() {
 
   async function copySeed(seed: number) {
     const copied = await copyTextToClipboard(String(seed))
-    if (!copied) setStatusMessage('复制失败，请手动复制种子号')
+    if (!copied) setSearchStatus({ type: 'copyFailed' })
   }
 
   return (
-    <main className="app-shell" data-testid="app-shell">
+    <main className="app-shell" data-testid="app-shell" lang={locale === 'en' ? 'en' : 'zh-CN'}>
       <div className={`connection-status ${connectionStatus}`} data-testid="connection-status">
-        {connectionLabel(connectionStatus)}
+        {connectionLabel(connectionStatus, t)}
       </div>
       <header className="app-header">
         <a href="https://wiki.biligame.com/stardewvalley/%E6%98%9F%E9%9C%B2%E8%B0%B7%E7%89%A9%E8%AF%AD%E7%BB%B4%E5%9F%BA" target="_blank">
           <img src={logo} alt="Stardew Valley" className="brand-icon" />
         </a>
-        <div>
+        <div className="app-title">
           <h1>StardewSeedSearcher Web</h1>
-          <p>星露谷物语种子搜索器 Web 版</p>
+          <p>{t.subtitle}</p>
+        </div>
+        <div className="language-switch" role="group" aria-label={t.language} data-testid="language-switch">
+          {(['zh', 'en'] as const).map((nextLocale) => (
+            <button
+              key={nextLocale}
+              type="button"
+              className={locale === nextLocale ? 'active' : ''}
+              aria-pressed={locale === nextLocale}
+              onClick={() => setLocale(nextLocale)}
+            >
+              {localeNames[nextLocale]}
+            </button>
+          ))}
         </div>
       </header>
 
@@ -279,143 +315,143 @@ function App() {
         <section className="panel main-panel" data-testid="main-panel">
           <details className="guide" open>
             <summary>
-              <Info size={18} /> 操作指南
+              <Info size={18} /> {t.guide}
             </summary>
             <ul>
-              <li>Web 版在浏览器 Web Worker 中搜索，不需要下载或启动本地 C# 服务。</li>
-              <li>搜索开始后按钮会变为停止搜索，点击即可取消当前任务。</li>
-              <li>基于 CuiYinYin2023/StardewSeedSearcher V1.0 的非官方 Web 移植版；如遇预测错误，请同时记录搜索条件和种子号。</li>
+              {t.guideItems.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
             </ul>
           </details>
 
           <details className="guide">
             <summary>
-              <BookOpen size={18} /> 功能说明
+              <BookOpen size={18} /> {t.featureInfo}
             </summary>
             <div className="feature-copy">
-              <p>最后更新基线：2026.6.12；适配星露谷版本：1.6.15；搜索结果支持平台：PC / 安卓 / iOS。</p>
-              <p>当前覆盖：天气、仙子、矿井混合宝箱、矿井怪物层、沙漠节商人、猪车。</p>
+              <p>{t.baseline}</p>
+              <p>{t.coverage}</p>
             </div>
           </details>
 
           <div className="form-row">
-            <NumberField label="起始种子" value={startSeed} min={1} max={INT_MAX} onChange={setStartSeed} />
+            <NumberField label={t.startSeed} testId="start-seed" value={startSeed} min={1} max={INT_MAX} onChange={setStartSeed} />
             <label className="field">
-              <span>搜索范围</span>
-              <select value={searchRange} onChange={(event) => setSearchRange(event.target.value)}>
-                {searchRangeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
+              <span>{t.searchRange}</span>
+              <select data-testid="search-range" value={searchRange} onChange={(event) => setSearchRange(event.target.value)}>
+                {t.ranges.map(([label, value]) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>
             </label>
-            <NumberField label="输出上限" value={outputLimit} min={1} max={500} onChange={setOutputLimit} />
+            <NumberField label={t.outputLimit} testId="output-limit" value={outputLimit} min={1} max={500} onChange={setOutputLimit} />
           </div>
 
           <div className="quick-row">
             <button type="button" className="soft-button" onClick={() => setStartSeed(1)}>
-              最小
+              {t.min}
             </button>
             <button type="button" className="soft-button" onClick={setRandomStartSeed}>
-              随机起点
+              {t.randomStart}
             </button>
             <label className="check">
               <input type="checkbox" checked={loopSearch} onChange={(event) => setLoopSearch(event.target.checked)} />
-              搜索后自动更新起始值
+              {t.loopSearch}
             </label>
             <label className="check">
               <input type="checkbox" checked={useLegacyRandom} onChange={(event) => setUseLegacyRandom(event.target.checked)} />
-              使用旧随机模式
+              {t.legacyRandom}
             </label>
           </div>
 
-          <FeatureSection title="天气筛选" enabled={weatherEnabled} onToggle={setWeatherEnabled} note="目前只支持第一年，雨天包含绿雨和雷雨。">
+          <FeatureSection featureId="weather" title={t.features.weather} enabled={weatherEnabled} onToggle={setWeatherEnabled} note={t.notes.weather}>
             {weatherConditions.map((condition, index) => (
               <div className="condition-row" data-testid="condition-row" key={index}>
-                <span>第一年</span>
-                <SeasonSelect value={condition.season} seasons={[0, 1, 2]} onChange={(season) => updateAt(weatherConditions, setWeatherConditions, index, { season })} />
-                <NumberField compact label="起始日" value={condition.startDay} min={1} max={28} onChange={(startDay) => updateAt(weatherConditions, setWeatherConditions, index, { startDay })} />
-                <NumberField compact label="结束日" value={condition.endDay} min={1} max={28} onChange={(endDay) => updateAt(weatherConditions, setWeatherConditions, index, { endDay })} />
-                <NumberField compact label="至少雨天" value={condition.minRainDays} min={1} max={28} onChange={(minRainDays) => updateAt(weatherConditions, setWeatherConditions, index, { minRainDays })} />
-                <IconButton label="删除天气条件" onClick={() => removeAt(weatherConditions, setWeatherConditions, index)} icon={<Trash2 size={16} />} />
+                <span>{t.firstYear}</span>
+                <SeasonSelect label={t.season} seasonNames={t.seasons} value={condition.season} seasons={[0, 1, 2]} onChange={(season) => updateAt(weatherConditions, setWeatherConditions, index, { season })} />
+                <NumberField compact label={t.startDay} value={condition.startDay} min={1} max={28} onChange={(startDay) => updateAt(weatherConditions, setWeatherConditions, index, { startDay })} />
+                <NumberField compact label={t.endDay} value={condition.endDay} min={1} max={28} onChange={(endDay) => updateAt(weatherConditions, setWeatherConditions, index, { endDay })} />
+                <NumberField compact label={t.minRainDays} value={condition.minRainDays} min={1} max={28} onChange={(minRainDays) => updateAt(weatherConditions, setWeatherConditions, index, { minRainDays })} />
+                <IconButton label={t.deleteWeatherCondition} onClick={() => removeAt(weatherConditions, setWeatherConditions, index)} icon={<Trash2 size={16} />} />
               </div>
             ))}
-            <AddButton onClick={() => setWeatherConditions([...weatherConditions, { season: 0, startDay: 1, endDay: 28, minRainDays: 10 }])}>添加条件</AddButton>
+            <AddButton onClick={() => setWeatherConditions([...weatherConditions, { season: 0, startDay: 1, endDay: 28, minRainDays: 10 }])}>{t.addCondition}</AddButton>
           </FeatureSection>
 
-          <FeatureSection title="仙子筛选" enabled={fairyEnabled} onToggle={setFairyEnabled} note="仙子事件可能会被其他事件覆盖。">
+          <FeatureSection featureId="fairy" title={t.features.fairy} enabled={fairyEnabled} onToggle={setFairyEnabled} note={t.notes.fairy}>
             {fairyConditions.map((condition, index) => (
               <div className="condition-row wide" data-testid="condition-row" key={index}>
-                <NumberField compact label="开始年" value={condition.startYear} min={1} max={10} onChange={(startYear) => updateAt(fairyConditions, setFairyConditions, index, { startYear })} />
-                <SeasonSelect value={condition.startSeason} seasons={[0, 1, 2]} onChange={(startSeason) => updateAt(fairyConditions, setFairyConditions, index, { startSeason })} />
-                <NumberField compact label="开始日" value={condition.startDay} min={1} max={28} onChange={(startDay) => updateAt(fairyConditions, setFairyConditions, index, { startDay })} />
-                <NumberField compact label="结束年" value={condition.endYear} min={1} max={10} onChange={(endYear) => updateAt(fairyConditions, setFairyConditions, index, { endYear })} />
-                <SeasonSelect value={condition.endSeason} seasons={[0, 1, 2]} onChange={(endSeason) => updateAt(fairyConditions, setFairyConditions, index, { endSeason })} />
-                <NumberField compact label="结束日" value={condition.endDay} min={1} max={28} onChange={(endDay) => updateAt(fairyConditions, setFairyConditions, index, { endDay })} />
-                <NumberField compact label="至少次数" value={condition.minOccurrences} min={1} max={99} onChange={(minOccurrences) => updateAt(fairyConditions, setFairyConditions, index, { minOccurrences })} />
-                <IconButton label="删除仙子条件" onClick={() => removeAt(fairyConditions, setFairyConditions, index)} icon={<Trash2 size={16} />} />
+                <NumberField compact label={t.startYear} value={condition.startYear} min={1} max={10} onChange={(startYear) => updateAt(fairyConditions, setFairyConditions, index, { startYear })} />
+                <SeasonSelect label={t.season} seasonNames={t.seasons} value={condition.startSeason} seasons={[0, 1, 2]} onChange={(startSeason) => updateAt(fairyConditions, setFairyConditions, index, { startSeason })} />
+                <NumberField compact label={t.startDay} value={condition.startDay} min={1} max={28} onChange={(startDay) => updateAt(fairyConditions, setFairyConditions, index, { startDay })} />
+                <NumberField compact label={t.endYear} value={condition.endYear} min={1} max={10} onChange={(endYear) => updateAt(fairyConditions, setFairyConditions, index, { endYear })} />
+                <SeasonSelect label={t.season} seasonNames={t.seasons} value={condition.endSeason} seasons={[0, 1, 2]} onChange={(endSeason) => updateAt(fairyConditions, setFairyConditions, index, { endSeason })} />
+                <NumberField compact label={t.endDay} value={condition.endDay} min={1} max={28} onChange={(endDay) => updateAt(fairyConditions, setFairyConditions, index, { endDay })} />
+                <NumberField compact label={t.minOccurrences} value={condition.minOccurrences} min={1} max={99} onChange={(minOccurrences) => updateAt(fairyConditions, setFairyConditions, index, { minOccurrences })} />
+                <IconButton label={t.deleteFairyCondition} onClick={() => removeAt(fairyConditions, setFairyConditions, index)} icon={<Trash2 size={16} />} />
               </div>
             ))}
-            <AddButton onClick={() => setFairyConditions([...fairyConditions, { startYear: 1, startSeason: 0, startDay: 1, endYear: 1, endSeason: 2, endDay: 28, minOccurrences: 1 }])}>添加条件</AddButton>
+            <AddButton onClick={() => setFairyConditions([...fairyConditions, { startYear: 1, startSeason: 0, startDay: 1, endYear: 1, endSeason: 2, endDay: 28, minOccurrences: 1 }])}>{t.addCondition}</AddButton>
           </FeatureSection>
 
-          <FeatureSection title="矿井混合宝箱筛选" enabled={mineChestEnabled} onToggle={setMineChestEnabled} note="必须在创建存档时勾选混合矿井。">
+          <FeatureSection featureId="mineChest" title={t.features.mineChest} enabled={mineChestEnabled} onToggle={setMineChestEnabled} note={t.notes.mineChest}>
             {mineChestConditions.map((condition, index) => (
               <div className="condition-row" data-testid="condition-row" key={index}>
                 <label className="field compact">
-                  <span>层数</span>
+                  <span>{t.floor}</span>
                   <select value={condition.floor} onChange={(event) => updateAt(mineChestConditions, setMineChestConditions, index, { floor: Number(event.target.value), itemName: mineChestItems[Number(event.target.value)][0] })}>
                     {mineChestFloors.map((floor) => (
                       <option value={floor} key={floor}>
-                        {floor}层
+                        {locale === 'en' ? `Floor ${floor}` : `${floor}层`}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="field">
-                  <span>目标物品</span>
+                  <span>{t.targetItem}</span>
                   <select value={condition.itemName} onChange={(event) => updateAt(mineChestConditions, setMineChestConditions, index, { itemName: event.target.value })}>
                     {mineChestItems[condition.floor].map((item) => (
                       <option key={item}>{item}</option>
                     ))}
                   </select>
                 </label>
-                <IconButton label="删除宝箱条件" onClick={() => removeAt(mineChestConditions, setMineChestConditions, index)} icon={<Trash2 size={16} />} />
+                <IconButton label={t.deleteChestCondition} onClick={() => removeAt(mineChestConditions, setMineChestConditions, index)} icon={<Trash2 size={16} />} />
               </div>
             ))}
-            <AddButton onClick={() => setMineChestConditions([...mineChestConditions, { floor: 20, itemName: mineChestItems[20][0] }])}>添加条件</AddButton>
+            <AddButton onClick={() => setMineChestConditions([...mineChestConditions, { floor: 20, itemName: mineChestItems[20][0] }])}>{t.addCondition}</AddButton>
           </FeatureSection>
 
-          <FeatureSection title="矿井怪物层筛选" enabled={monsterLevelEnabled} onToggle={setMonsterLevelEnabled} note="筛选指定日期和层数范围没有怪物层，当前支持第一年。">
+          <FeatureSection featureId="monsterLevel" title={t.features.monsterLevel} enabled={monsterLevelEnabled} onToggle={setMonsterLevelEnabled} note={t.notes.monsterLevel}>
             {monsterLevelConditions.map((condition, index) => (
               <div className="condition-row wide" data-testid="condition-row" key={index}>
-                <SeasonSelect value={condition.startSeason} seasons={[0, 1, 2]} onChange={(startSeason) => updateAt(monsterLevelConditions, setMonsterLevelConditions, index, { startSeason })} />
-                <NumberField compact label="开始日" value={condition.startDay} min={1} max={28} onChange={(startDay) => updateAt(monsterLevelConditions, setMonsterLevelConditions, index, { startDay })} />
-                <SeasonSelect value={condition.endSeason} seasons={[0, 1, 2]} onChange={(endSeason) => updateAt(monsterLevelConditions, setMonsterLevelConditions, index, { endSeason })} />
-                <NumberField compact label="结束日" value={condition.endDay} min={1} max={28} onChange={(endDay) => updateAt(monsterLevelConditions, setMonsterLevelConditions, index, { endDay })} />
-                <NumberField compact label="起始层" value={condition.startLevel} min={1} max={119} onChange={(startLevel) => updateAt(monsterLevelConditions, setMonsterLevelConditions, index, { startLevel })} />
-                <NumberField compact label="结束层" value={condition.endLevel} min={1} max={119} onChange={(endLevel) => updateAt(monsterLevelConditions, setMonsterLevelConditions, index, { endLevel })} />
-                <IconButton label="删除怪物层条件" onClick={() => removeAt(monsterLevelConditions, setMonsterLevelConditions, index)} icon={<Trash2 size={16} />} />
+                <SeasonSelect label={t.season} seasonNames={t.seasons} value={condition.startSeason} seasons={[0, 1, 2]} onChange={(startSeason) => updateAt(monsterLevelConditions, setMonsterLevelConditions, index, { startSeason })} />
+                <NumberField compact label={t.startDay} value={condition.startDay} min={1} max={28} onChange={(startDay) => updateAt(monsterLevelConditions, setMonsterLevelConditions, index, { startDay })} />
+                <SeasonSelect label={t.season} seasonNames={t.seasons} value={condition.endSeason} seasons={[0, 1, 2]} onChange={(endSeason) => updateAt(monsterLevelConditions, setMonsterLevelConditions, index, { endSeason })} />
+                <NumberField compact label={t.endDay} value={condition.endDay} min={1} max={28} onChange={(endDay) => updateAt(monsterLevelConditions, setMonsterLevelConditions, index, { endDay })} />
+                <NumberField compact label={t.startLevel} value={condition.startLevel} min={1} max={119} onChange={(startLevel) => updateAt(monsterLevelConditions, setMonsterLevelConditions, index, { startLevel })} />
+                <NumberField compact label={t.endLevel} value={condition.endLevel} min={1} max={119} onChange={(endLevel) => updateAt(monsterLevelConditions, setMonsterLevelConditions, index, { endLevel })} />
+                <IconButton label={t.deleteMonsterCondition} onClick={() => removeAt(monsterLevelConditions, setMonsterLevelConditions, index)} icon={<Trash2 size={16} />} />
               </div>
             ))}
-            <AddButton onClick={() => setMonsterLevelConditions([...monsterLevelConditions, { startSeason: 0, endSeason: 0, startDay: 5, endDay: 5, startLevel: 1, endLevel: 40 }])}>添加条件</AddButton>
+            <AddButton onClick={() => setMonsterLevelConditions([...monsterLevelConditions, { startSeason: 0, endSeason: 0, startDay: 5, endDay: 5, startLevel: 1, endLevel: 40 }])}>{t.addCondition}</AddButton>
           </FeatureSection>
 
-          <FeatureSection title="沙漠节商人筛选" enabled={desertFestivalEnabled} onToggle={setDesertFestivalEnabled} note="筛选第一年沙漠节出现贾斯或莉亚。">
+          <FeatureSection featureId="desertFestival" title={t.features.desertFestival} enabled={desertFestivalEnabled} onToggle={setDesertFestivalEnabled} note={t.notes.desertFestival}>
             <div className="quick-row">
               <label className="check">
                 <input type="checkbox" checked={desertFestivalCondition.requireJas} onChange={(event) => setDesertFestivalCondition({ ...desertFestivalCondition, requireJas: event.target.checked })} />
-                要求贾斯
+                {t.requireJas}
               </label>
               <label className="check">
                 <input type="checkbox" checked={desertFestivalCondition.requireLeah} onChange={(event) => setDesertFestivalCondition({ ...desertFestivalCondition, requireLeah: event.target.checked })} />
-                要求莉亚
+                {t.requireLeah}
               </label>
             </div>
           </FeatureSection>
 
-          <FeatureSection title="猪车筛选" enabled={cartEnabled} onToggle={setCartEnabled} note="可输入物品名称并设置数量为 5 的条件。">
+          <FeatureSection featureId="cart" title={t.features.cart} enabled={cartEnabled} onToggle={setCartEnabled} note={t.notes.cart}>
             <datalist id="cart-items">
               {allCartItemNames.map((name) => (
                 <option key={name} value={name} />
@@ -423,40 +459,40 @@ function App() {
             </datalist>
             {cartConditions.map((condition, index) => (
               <div className="condition-row wide" data-testid="condition-row" key={index}>
-                <NumberField compact label="开始年" value={condition.startYear} min={1} max={10} onChange={(startYear) => updateAt(cartConditions, setCartConditions, index, { startYear })} />
-                <SeasonSelect value={condition.startSeason} seasons={[0, 1, 2, 3]} onChange={(startSeason) => updateAt(cartConditions, setCartConditions, index, { startSeason })} />
-                <NumberField compact label="开始日" value={condition.startDay} min={1} max={28} onChange={(startDay) => updateAt(cartConditions, setCartConditions, index, { startDay })} />
-                <NumberField compact label="结束年" value={condition.endYear} min={1} max={10} onChange={(endYear) => updateAt(cartConditions, setCartConditions, index, { endYear })} />
-                <SeasonSelect value={condition.endSeason} seasons={[0, 1, 2, 3]} onChange={(endSeason) => updateAt(cartConditions, setCartConditions, index, { endSeason })} />
-                <NumberField compact label="结束日" value={condition.endDay} min={1} max={28} onChange={(endDay) => updateAt(cartConditions, setCartConditions, index, { endDay })} />
+                <NumberField compact label={t.startYear} value={condition.startYear} min={1} max={10} onChange={(startYear) => updateAt(cartConditions, setCartConditions, index, { startYear })} />
+                <SeasonSelect label={t.season} seasonNames={t.seasons} value={condition.startSeason} seasons={[0, 1, 2, 3]} onChange={(startSeason) => updateAt(cartConditions, setCartConditions, index, { startSeason })} />
+                <NumberField compact label={t.startDay} value={condition.startDay} min={1} max={28} onChange={(startDay) => updateAt(cartConditions, setCartConditions, index, { startDay })} />
+                <NumberField compact label={t.endYear} value={condition.endYear} min={1} max={10} onChange={(endYear) => updateAt(cartConditions, setCartConditions, index, { endYear })} />
+                <SeasonSelect label={t.season} seasonNames={t.seasons} value={condition.endSeason} seasons={[0, 1, 2, 3]} onChange={(endSeason) => updateAt(cartConditions, setCartConditions, index, { endSeason })} />
+                <NumberField compact label={t.endDay} value={condition.endDay} min={1} max={28} onChange={(endDay) => updateAt(cartConditions, setCartConditions, index, { endDay })} />
                 <label className="field item-field">
-                  <span>物品</span>
+                  <span>{t.item}</span>
                   <input list="cart-items" value={condition.itemName} onChange={(event) => updateAt(cartConditions, setCartConditions, index, { itemName: event.target.value })} />
                 </label>
-                <NumberField compact label="至少次数" value={condition.minOccurrences} min={1} max={99} onChange={(minOccurrences) => updateAt(cartConditions, setCartConditions, index, { minOccurrences })} />
+                <NumberField compact label={t.minOccurrences} value={condition.minOccurrences} min={1} max={99} onChange={(minOccurrences) => updateAt(cartConditions, setCartConditions, index, { minOccurrences })} />
                 <label className="check small-check">
                   <input type="checkbox" checked={condition.requireQty5} onChange={(event) => updateAt(cartConditions, setCartConditions, index, { requireQty5: event.target.checked })} />
-                  数量5
+                  {t.quantityFive}
                 </label>
-                <IconButton label="删除猪车条件" onClick={() => removeAt(cartConditions, setCartConditions, index)} icon={<Trash2 size={16} />} />
+                <IconButton label={t.deleteCartCondition} onClick={() => removeAt(cartConditions, setCartConditions, index)} icon={<Trash2 size={16} />} />
               </div>
             ))}
-            <AddButton onClick={() => setCartConditions([...cartConditions, { startYear: 1, startSeason: 0, startDay: 5, endYear: 1, endSeason: 2, endDay: 28, itemName: allCartItemNames[0] ?? '', requireQty5: false, minOccurrences: 1 }])}>添加条件</AddButton>
+            <AddButton onClick={() => setCartConditions([...cartConditions, { startYear: 1, startSeason: 0, startDay: 5, endYear: 1, endSeason: 2, endDay: 28, itemName: allCartItemNames[0] ?? '', requireQty5: false, minOccurrences: 1 }])}>{t.addCondition}</AddButton>
           </FeatureSection>
 
           <div className="action-row">
             <button type="submit" className={isSearching ? 'primary stop' : 'primary'} data-testid="start-search">
               {isSearching ? <Square size={18} /> : <Search size={18} />}
-              {isSearching ? '停止搜索' : '开始搜索'}
+              {isSearching ? t.stopSearch : t.startSearch}
             </button>
             <button type="button" className="secondary" onClick={exportResults} disabled={foundSeeds.length === 0}>
-              <Download size={18} /> 导出所有种子号
+              <Download size={18} /> {t.exportSeeds}
             </button>
           </div>
         </section>
 
         <aside className="panel results-panel" data-testid="results-panel">
-          <h2>搜索状态</h2>
+          <h2>{t.statusTitle}</h2>
           <div className="status-card">
             <p data-testid="status-message">{statusMessage}</p>
             {rangeBadge && <span className="range-badge">{rangeBadge}</span>}
@@ -467,26 +503,26 @@ function App() {
             </div>
           </div>
           <div className="metric-grid" data-testid="metric-grid">
-            <Metric label="已检查" value={checkedCount.toLocaleString()} />
-            <Metric label="总范围" value={totalCount.toLocaleString()} />
-            <Metric label="找到" value={foundSeeds.length.toLocaleString()} />
-            <Metric label="速度" value={`${speed.toLocaleString()}/s`} />
-            <Metric label="已用时" value={formatTime(elapsed)} />
-            <Metric label="预计剩余" value={speed > 0 ? formatTime((totalCount - checkedCount) / speed) : '--'} />
+            <Metric label={t.checked} value={checkedCount.toLocaleString()} />
+            <Metric label={t.totalRange} value={totalCount.toLocaleString()} />
+            <Metric label={t.found} value={foundSeeds.length.toLocaleString()} />
+            <Metric label={t.speed} value={`${speed.toLocaleString()}/s`} />
+            <Metric label={t.elapsed} value={formatTime(elapsed)} />
+            <Metric label={t.eta} value={speed > 0 ? formatTime((totalCount - checkedCount) / speed) : '--'} />
           </div>
 
           <section className="analysis">
-            <h3>筛选统计</h3>
+            <h3>{t.statsTitle}</h3>
             <div className="analysis-row">
-              <span>是否提前停止</span>
-              <strong>{stoppedEarly === null ? '?' : stoppedEarly ? '是' : '否'}</strong>
+              <span>{t.stoppedEarly}</span>
+              <strong>{stoppedEarly === null ? t.unknown : stoppedEarly ? t.yes : t.no}</strong>
             </div>
             {featureStats.length === 0 ? (
-              <p className="muted">搜索开始后显示各条件通过数量。</p>
+              <p className="muted">{t.statsPlaceholder}</p>
             ) : (
               featureStats.map((stat) => (
                 <div className="analysis-row" key={stat.name}>
-                  <span>{stat.name}</span>
+                  <span>{formatFeatureStatName(stat.name, t)}</span>
                   <strong>{stat.passCount.toLocaleString()}</strong>
                 </div>
               ))
@@ -494,40 +530,44 @@ function App() {
           </section>
 
           <section className="seed-results" data-testid="results">
-            <h3>结果列表</h3>
-            <p className="muted">共找到 {foundSeeds.length} 个，显示前 20 个。</p>
+            <h3>{t.resultsTitle}</h3>
+            <p className="muted">{t.resultsCount(foundSeeds.length)}</p>
             <div className="seed-list">
               {foundSeeds.slice(0, 20).map((item) => (
                 <div className="seed-item" data-testid="seed-result" key={item.seed}>
-                  <span>种子: {item.seed}</span>
+                  <span>
+                    {t.seedLabel}: {item.seed}
+                  </span>
                   <div>
-                    <button type="button" onClick={() => setSelectedSeed(item)}>
-                      简介
+                    <button type="button" data-testid="seed-details" onClick={() => setSelectedSeed(item)}>
+                      {t.intro}
                     </button>
-                    <button type="button" onClick={() => copySeed(item.seed)}>
-                      复制
+                    <button type="button" data-testid="seed-copy" onClick={() => copySeed(item.seed)}>
+                      {t.copy}
                     </button>
                   </div>
                 </div>
               ))}
-              {foundSeeds.length === 0 && <p className="empty">暂无结果</p>}
+              {foundSeeds.length === 0 && <p className="empty">{t.noResults}</p>}
             </div>
           </section>
         </aside>
       </form>
 
-      {selectedSeed && <SeedDrawer found={selectedSeed} onClose={() => setSelectedSeed(null)} onCopy={() => copySeed(selectedSeed.seed)} />}
+      {selectedSeed && <SeedDrawer found={selectedSeed} t={t} locale={locale} onClose={() => setSelectedSeed(null)} onCopy={() => copySeed(selectedSeed.seed)} />}
     </main>
   )
 }
 
 function FeatureSection({
+  featureId,
   title,
   note,
   enabled,
   onToggle,
   children,
 }: {
+  featureId: FeatureId
   title: string
   note: string
   enabled: boolean
@@ -535,14 +575,14 @@ function FeatureSection({
   children: React.ReactNode
 }) {
   return (
-    <section className={`feature-section ${enabled ? 'enabled' : ''}`} data-testid={`feature-section-${title}`}>
+    <section className={`feature-section ${enabled ? 'enabled' : ''}`} data-testid={`feature-section-${featureId}`}>
       <div className="feature-header">
         <label className="check title-check">
           <input
             type="checkbox"
             checked={enabled}
             aria-label={title}
-            data-testid={`feature-toggle-${title}`}
+            data-testid={`feature-toggle-${featureId}`}
             onChange={(event) => onToggle(event.target.checked)}
           />
           {title}
@@ -556,6 +596,7 @@ function FeatureSection({
 
 function NumberField({
   label,
+  testId,
   value,
   min,
   max,
@@ -563,6 +604,7 @@ function NumberField({
   onChange,
 }: {
   label: string
+  testId?: string
   value: number
   min?: number
   max?: number
@@ -572,23 +614,27 @@ function NumberField({
   return (
     <label className={`field ${compact ? 'compact' : ''}`}>
       <span>{label}</span>
-      <input type="number" min={min} max={max} value={value} onChange={(event) => onChange(Number.parseInt(event.target.value, 10) || 0)} />
+      <input data-testid={testId} type="number" min={min} max={max} value={value} onChange={(event) => onChange(Number.parseInt(event.target.value, 10) || 0)} />
     </label>
   )
 }
 
 function SeasonSelect({
+  label,
+  seasonNames,
   value,
   seasons,
   onChange,
 }: {
+  label: string
+  seasonNames: readonly string[]
   value: number
   seasons: (0 | 1 | 2 | 3)[]
   onChange: (season: 0 | 1 | 2 | 3) => void
 }) {
   return (
     <label className="field compact">
-      <span>季节</span>
+      <span>{label}</span>
       <select value={value} onChange={(event) => onChange(Number(event.target.value) as 0 | 1 | 2 | 3)}>
         {seasons.map((season) => (
           <option value={season} key={season}>
@@ -625,78 +671,104 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
-function SeedDrawer({ found, onClose, onCopy }: { found: FoundSeed; onClose: () => void; onCopy: () => void }) {
+function SeedDrawer({
+  found,
+  t,
+  locale,
+  onClose,
+  onCopy,
+}: {
+  found: FoundSeed
+  t: AppCopy
+  locale: Locale
+  onClose: () => void
+  onCopy: () => void
+}) {
   const { details, enabled } = found
   return (
-    <div className="drawer-backdrop" role="dialog" aria-modal="true" aria-label={`种子 ${found.seed} 简介`} data-testid="seed-detail">
+    <div className="drawer-backdrop" role="dialog" aria-modal="true" aria-label={`${t.seedLabel} ${found.seed} ${t.intro}`} data-testid="seed-detail">
       <aside className="seed-drawer" data-testid="seed-drawer">
         <header>
           <div>
-            <span>种子简介</span>
+            <span>{t.drawerTitle}</span>
             <h2>{found.seed}</h2>
           </div>
           <div className="drawer-actions">
             <button type="button" onClick={onCopy}>
-              <Clipboard size={16} /> 复制
+              <Clipboard size={16} /> {t.copy}
             </button>
-            <button type="button" aria-label="关闭" onClick={onClose}>
+            <button type="button" aria-label={t.close} onClick={onClose}>
               <X size={18} />
             </button>
           </div>
         </header>
 
         {enabled.weather && details.weather && (
-          <DetailSection title="天气">
-            <p>绿雨：夏 {details.weather.greenRainDay}</p>
-            <p>春雨：{details.weather.springRain.join('、') || '无'}</p>
-            <p>夏雨：{details.weather.summerRain.join('、') || '无'}</p>
-            <p>秋雨：{details.weather.fallRain.join('、') || '无'}</p>
+          <DetailSection title={t.detailSections.weather}>
+            <p>
+              {t.weatherDetails.greenRain}: {t.seasons[1]} {details.weather.greenRainDay}
+            </p>
+            <p>
+              {t.weatherDetails.springRain}: {formatDayList(details.weather.springRain, t)}
+            </p>
+            <p>
+              {t.weatherDetails.summerRain}: {formatDayList(details.weather.summerRain, t)}
+            </p>
+            <p>
+              {t.weatherDetails.fallRain}: {formatDayList(details.weather.fallRain, t)}
+            </p>
           </DetailSection>
         )}
         {enabled.fairy && details.fairy && (
-          <DetailSection title="仙子">
+          <DetailSection title={t.detailSections.fairy}>
             {details.fairy.days.length === 0 ? (
-              <p>条件范围内没有仙子记录。</p>
+              <p>{t.noFairyRecords}</p>
             ) : (
               details.fairy.days.map((day, index) => (
                 <p key={index}>
-                  {formatGameDate(day.year, day.season, day.day)} {day.isBlocked ? '被次日雨天拦截' : '可降临'}
+                  {formatDisplayDate(day.year, day.season, day.day, t, locale)} {day.isBlocked ? t.fairyBlocked : t.fairyAvailable}
                 </p>
               ))
             )}
           </DetailSection>
         )}
         {enabled.mineChest && details.mineChest && (
-          <DetailSection title="矿井混合宝箱">
+          <DetailSection title={t.detailSections.mineChest}>
             {details.mineChest.map((item) => (
               <p key={item.floor}>
-                {item.floor}层：{item.item} {item.matched ? <CheckCircle2 size={14} /> : null}
+                {locale === 'en' ? `Floor ${item.floor}` : `${item.floor}层`}: {item.item} {item.matched ? <CheckCircle2 size={14} /> : null}
               </p>
             ))}
           </DetailSection>
         )}
         {enabled.monsterLevel && details.monsterLevel && (
-          <DetailSection title="怪物层">
+          <DetailSection title={t.detailSections.monsterLevel}>
             {details.monsterLevel.map((item, index) => (
               <p key={index}>{item.description}</p>
             ))}
           </DetailSection>
         )}
         {enabled.desertFestival && details.desertFestival && (
-          <DetailSection title="沙漠节商人">
-            <p>春15：{details.desertFestival.day15.join('、')}</p>
-            <p>春16：{details.desertFestival.day16.join('、')}</p>
-            <p>春17：{details.desertFestival.day17.join('、')}</p>
+          <DetailSection title={t.detailSections.desertFestival}>
+            <p>
+              {t.seasons[0]} 15: {formatTextList(details.desertFestival.day15)}
+            </p>
+            <p>
+              {t.seasons[0]} 16: {formatTextList(details.desertFestival.day16)}
+            </p>
+            <p>
+              {t.seasons[0]} 17: {formatTextList(details.desertFestival.day17)}
+            </p>
           </DetailSection>
         )}
         {enabled.cart && details.cart && (
-          <DetailSection title="猪车">
+          <DetailSection title={t.detailSections.cart}>
             {details.cart.matches.length === 0 ? (
-              <p>没有记录到匹配项。</p>
+              <p>{t.noCartMatches}</p>
             ) : (
               details.cart.matches.map((match, index) => (
                 <p key={index}>
-                  {formatGameDate(match.year, match.season, match.day)}：{match.itemName} x{match.quantity === -1 ? '无限' : match.quantity}，{match.price}g
+                  {formatDisplayDate(match.year, match.season, match.day, t, locale)}: {match.itemName} x{match.quantity === -1 ? t.unlimited : match.quantity}, {match.price}g
                 </p>
               ))
             )}
@@ -724,11 +796,38 @@ function removeAt<T>(items: T[], setItems: (items: T[]) => void, index: number) 
   setItems(items.filter((_, itemIndex) => itemIndex !== index))
 }
 
-function connectionLabel(status: 'idle' | 'running' | 'complete' | 'error') {
-  if (status === 'running') return 'Worker 搜索中'
-  if (status === 'complete') return '搜索完成'
-  if (status === 'error') return '搜索错误'
-  return '本地浏览器计算'
+function connectionLabel(status: 'idle' | 'running' | 'complete' | 'error', t: AppCopy) {
+  if (status === 'running') return t.workerRunning
+  if (status === 'complete') return t.complete
+  if (status === 'error') return t.error
+  return t.localCompute
+}
+
+function formatStatus(status: SearchStatus, t: AppCopy): string {
+  if (status.type === 'searching') return t.searching(status.start.toLocaleString(), status.end.toLocaleString())
+  if (status.type === 'stopping') return t.stopping
+  if (status.type === 'stopped') return t.stopped(status.totalFound)
+  if (status.type === 'completed') return t.completed(status.totalFound)
+  if (status.type === 'copyFailed') return t.copyFailed
+  return t.idleStatus
+}
+
+function formatFeatureStatName(name: string, t: AppCopy): string {
+  const featureId = featureStatNames[name]
+  return featureId ? t.features[featureId] : name
+}
+
+function formatDisplayDate(year: number, season: Season, day: number, t: AppCopy, locale: Locale): string {
+  if (locale === 'en') return `Year ${year}, ${t.seasons[season]} ${day}`
+  return `第${year}年${t.seasons[season]}${day}日`
+}
+
+function formatDayList(days: number[], t: AppCopy): string {
+  return days.length > 0 ? days.join(', ') : t.weatherDetails.none
+}
+
+function formatTextList(items: string[]): string {
+  return items.join(', ')
 }
 
 function formatTime(seconds: number): string {

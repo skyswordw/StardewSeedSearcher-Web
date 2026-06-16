@@ -3,7 +3,7 @@ import {
   assertNoHorizontalOverflow,
   conditionRows,
   configureTinySeedRange,
-  featureNames,
+  featureIds,
   featureSection,
   featureToggle,
   openApp,
@@ -27,12 +27,30 @@ test.describe('functional UI coverage', () => {
     await assertNoHorizontalOverflow(page)
   })
 
+  test('switches to English and preserves core controls', async ({ page }) => {
+    await openApp(page)
+
+    await page.getByTestId('language-switch').getByRole('button', { name: 'English' }).click()
+
+    await expect(page).toHaveTitle(/Unofficial Stardew Valley seed searcher Web port/)
+    await expect(page.getByTestId('status-message')).toHaveText('Ready to search')
+    await expect(page.getByTestId('connection-status')).toHaveText('Local browser compute')
+    await expect(page.getByTestId('start-search')).toContainText('Start search')
+    await expect(page.getByRole('button', { name: /Export seed numbers/ })).toBeDisabled()
+    await expect(featureSection(page, 'weather')).toContainText('Weather filter')
+    await expect(page.getByTestId('search-range')).toHaveValue('100000')
+    await assertNoHorizontalOverflow(page)
+
+    await page.getByTestId('language-switch').getByRole('button', { name: '中文' }).click()
+    await expect(page.getByTestId('status-message')).toHaveText('等待搜索')
+  })
+
   test('toggles every feature section and preserves controls when re-enabled', async ({ page }) => {
     await openApp(page)
 
-    for (const name of featureNames) {
-      const toggle = featureToggle(page, name)
-      const section = featureSection(page, name)
+    for (const featureId of featureIds) {
+      const toggle = featureToggle(page, featureId)
+      const section = featureSection(page, featureId)
 
       await expect(toggle).toBeVisible()
       await toggle.setChecked(false)
@@ -42,7 +60,7 @@ test.describe('functional UI coverage', () => {
       await toggle.setChecked(true)
       await expect(toggle).toBeChecked()
 
-      if (name === '沙漠节商人筛选') {
+      if (featureId === 'desertFestival') {
         await expect(section.getByLabel('要求贾斯')).toBeVisible()
       } else {
         await expect(section.getByTestId('add-condition')).toBeVisible()
@@ -53,7 +71,7 @@ test.describe('functional UI coverage', () => {
   test('adds and removes feature conditions', async ({ page }) => {
     await openApp(page)
 
-    const weatherSection = featureSection(page, '天气筛选')
+    const weatherSection = featureSection(page, 'weather')
     const beforeCount = await conditionRows(page).count()
     await weatherSection.getByTestId('add-condition').click()
     await expect.poll(async () => conditionRows(page).count()).toBe(beforeCount + 1)
@@ -65,7 +83,7 @@ test.describe('functional UI coverage', () => {
   test('shows validation dialogs for invalid feature values and missing enabled features', async ({ page }) => {
     await openApp(page)
 
-    const weatherSection = featureSection(page, '天气筛选')
+    const weatherSection = featureSection(page, 'weather')
     await weatherSection.getByLabel('起始日').fill('28')
     await weatherSection.getByLabel('结束日').fill('1')
     const invalidWeatherDialog = dismissNextDialog(page)

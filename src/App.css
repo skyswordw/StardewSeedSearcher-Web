@@ -78,6 +78,7 @@ button:disabled {
   width: min(1180px, 100%);
   margin: 0 auto 22px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 22px;
@@ -91,10 +92,12 @@ button:disabled {
   font-size: clamp(34px, 6vw, 64px);
   line-height: 1;
   letter-spacing: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
-.app-header > div {
+.app-title {
+  flex: 1 1 420px;
   min-width: 0;
 }
 
@@ -105,11 +108,45 @@ button:disabled {
 }
 
 .brand-icon {
+  flex: 0 0 auto;
   width: clamp(64px, 9vw, 96px);
   height: clamp(64px, 9vw, 96px);
   object-fit: contain;
   border-radius: 20px;
   filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.24));
+}
+
+.language-switch {
+  flex: 0 0 auto;
+  display: inline-flex;
+  gap: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 8px;
+  padding: 3px;
+  background: rgba(67, 41, 27, 0.26);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.14);
+  text-shadow: none;
+}
+
+.language-switch button {
+  border: 0;
+  border-radius: 6px;
+  min-height: 34px;
+  padding: 6px 10px;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.language-switch button.active {
+  background: #fffdf7;
+  color: var(--wood-dark);
+}
+
+.language-switch button:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 2px;
 }
 
 .tool-grid {
@@ -512,6 +549,27 @@ select:focus {
 
   .app-header {
     gap: 12px;
+  }
+
+  .app-header h1 {
+    font-size: clamp(26px, 8vw, 38px);
+    line-height: 1.05;
+  }
+
+  .app-header p {
+    font-size: 15px;
+    line-height: 1.35;
+  }
+
+  .app-title {
+    flex-basis: min(100%, 320px);
+  }
+
+  .language-switch {
+    flex-basis: 100%;
+    justify-content: center;
+    width: min(100%, 260px);
+    margin: 0 auto;
   }
 
   .brand-icon {
