@@ -125,6 +125,34 @@ const scenarioDefinitions = {
       ],
     },
   }),
+  'upstream-feedback-mixed-heavy': ({ startSeed, endSeed, range }) => ({
+    mode: 'sync',
+    request: {
+      ...baseRequest({ startSeed, endSeed, range }),
+      weatherConditions: [{ season: 0, startDay: 1, endDay: 28, minRainDays: 10 }],
+      fairyConditions: [
+        { startYear: 1, startSeason: 0, startDay: 1, endYear: 1, endSeason: 0, endDay: 28, minOccurrences: 2 },
+      ],
+      mineChestConditions: [{ floor: 110, itemName: '巨锤' }],
+      monsterLevelConditions: [
+        { startSeason: 0, endSeason: 0, startDay: 5, endDay: 5, startLevel: 1, endLevel: 40 },
+      ],
+      desertFestivalCondition: { requireJas: true, requireLeah: false },
+      cartConditions: [
+        {
+          startYear: 1,
+          startSeason: 0,
+          startDay: 5,
+          endYear: 1,
+          endSeason: 2,
+          endDay: 28,
+          itemName: '电池组',
+          requireQty5: false,
+          minOccurrences: 1,
+        },
+      ],
+    },
+  }),
   'cancel-heavy': ({ startSeed, endSeed, range }) => ({
     mode: 'async-cancel',
     yieldEvery: 2_000,

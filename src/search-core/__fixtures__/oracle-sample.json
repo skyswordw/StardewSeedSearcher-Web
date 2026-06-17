@@ -735,6 +735,260 @@
         28,
         29
       ]
+    },
+    {
+      "name": "upstream-feedback-mixed-heavy-false-positive-window",
+      "request": {
+        "startSeed": 175000,
+        "endSeed": 176000,
+        "useLegacyRandom": false,
+        "weatherConditions": [
+          {
+            "season": 0,
+            "startDay": 1,
+            "endDay": 28,
+            "minRainDays": 10
+          }
+        ],
+        "fairyConditions": [
+          {
+            "startYear": 1,
+            "startSeason": 0,
+            "startDay": 1,
+            "endYear": 1,
+            "endSeason": 0,
+            "endDay": 28,
+            "minOccurrences": 2
+          }
+        ],
+        "mineChestConditions": [
+          {
+            "floor": 110,
+            "itemName": "\u5DE8\u9524"
+          }
+        ],
+        "monsterLevelConditions": [
+          {
+            "startSeason": 0,
+            "endSeason": 0,
+            "startDay": 5,
+            "endDay": 5,
+            "startLevel": 1,
+            "endLevel": 40
+          }
+        ],
+        "desertFestivalCondition": {
+          "requireJas": true,
+          "requireLeah": false
+        },
+        "cartConditions": [
+          {
+            "startYear": 1,
+            "startSeason": 0,
+            "startDay": 5,
+            "endYear": 1,
+            "endSeason": 2,
+            "endDay": 28,
+            "itemName": "\u7535\u6C60\u7EC4",
+            "requireQty5": false,
+            "minOccurrences": 1
+          }
+        ],
+        "outputLimit": 20
+      },
+      "expected": []
+    },
+    {
+      "name": "upstream-feedback-mixed-heavy-first-match-window",
+      "request": {
+        "startSeed": 2373000,
+        "endSeed": 2373100,
+        "useLegacyRandom": false,
+        "weatherConditions": [
+          {
+            "season": 0,
+            "startDay": 1,
+            "endDay": 28,
+            "minRainDays": 10
+          }
+        ],
+        "fairyConditions": [
+          {
+            "startYear": 1,
+            "startSeason": 0,
+            "startDay": 1,
+            "endYear": 1,
+            "endSeason": 0,
+            "endDay": 28,
+            "minOccurrences": 2
+          }
+        ],
+        "mineChestConditions": [
+          {
+            "floor": 110,
+            "itemName": "\u5DE8\u9524"
+          }
+        ],
+        "monsterLevelConditions": [
+          {
+            "startSeason": 0,
+            "endSeason": 0,
+            "startDay": 5,
+            "endDay": 5,
+            "startLevel": 1,
+            "endLevel": 40
+          }
+        ],
+        "desertFestivalCondition": {
+          "requireJas": true,
+          "requireLeah": false
+        },
+        "cartConditions": [
+          {
+            "startYear": 1,
+            "startSeason": 0,
+            "startDay": 5,
+            "endYear": 1,
+            "endSeason": 2,
+            "endDay": 28,
+            "itemName": "\u7535\u6C60\u7EC4",
+            "requireQty5": false,
+            "minOccurrences": 1
+          }
+        ],
+        "outputLimit": 20
+      },
+      "expected": [
+        2373057
+      ]
+    },
+    {
+      "name": "upstream-feedback-mixed-heavy-second-match-window",
+      "request": {
+        "startSeed": 2381150,
+        "endSeed": 2381250,
+        "useLegacyRandom": false,
+        "weatherConditions": [
+          {
+            "season": 0,
+            "startDay": 1,
+            "endDay": 28,
+            "minRainDays": 10
+          }
+        ],
+        "fairyConditions": [
+          {
+            "startYear": 1,
+            "startSeason": 0,
+            "startDay": 1,
+            "endYear": 1,
+            "endSeason": 0,
+            "endDay": 28,
+            "minOccurrences": 2
+          }
+        ],
+        "mineChestConditions": [
+          {
+            "floor": 110,
+            "itemName": "\u5DE8\u9524"
+          }
+        ],
+        "monsterLevelConditions": [
+          {
+            "startSeason": 0,
+            "endSeason": 0,
+            "startDay": 5,
+            "endDay": 5,
+            "startLevel": 1,
+            "endLevel": 40
+          }
+        ],
+        "desertFestivalCondition": {
+          "requireJas": true,
+          "requireLeah": false
+        },
+        "cartConditions": [
+          {
+            "startYear": 1,
+            "startSeason": 0,
+            "startDay": 5,
+            "endYear": 1,
+            "endSeason": 2,
+            "endDay": 28,
+            "itemName": "\u7535\u6C60\u7EC4",
+            "requireQty5": false,
+            "minOccurrences": 1
+          }
+        ],
+        "outputLimit": 20
+      },
+      "expected": [
+        2381215
+      ]
+    },
+    {
+      "name": "upstream-feedback-mixed-heavy-twentieth-match-window",
+      "request": {
+        "startSeed": 12526100,
+        "endSeed": 12526250,
+        "useLegacyRandom": false,
+        "weatherConditions": [
+          {
+            "season": 0,
+            "startDay": 1,
+            "endDay": 28,
+            "minRainDays": 10
+          }
+        ],
+        "fairyConditions": [
+          {
+            "startYear": 1,
+            "startSeason": 0,
+            "startDay": 1,
+            "endYear": 1,
+            "endSeason": 0,
+            "endDay": 28,
+            "minOccurrences": 2
+          }
+        ],
+        "mineChestConditions": [
+          {
+            "floor": 110,
+            "itemName": "\u5DE8\u9524"
+          }
+        ],
+        "monsterLevelConditions": [
+          {
+            "startSeason": 0,
+            "endSeason": 0,
+            "startDay": 5,
+            "endDay": 5,
+            "startLevel": 1,
+            "endLevel": 40
+          }
+        ],
+        "desertFestivalCondition": {
+          "requireJas": true,
+          "requireLeah": false
+        },
+        "cartConditions": [
+          {
+            "startYear": 1,
+            "startSeason": 0,
+            "startDay": 5,
+            "endYear": 1,
+            "endSeason": 2,
+            "endDay": 28,
+            "itemName": "\u7535\u6C60\u7EC4",
+            "requireQty5": false,
+            "minOccurrences": 1
+          }
+        ],
+        "outputLimit": 20
+      },
+      "expected": [
+        12526188
+      ]
     }
   ]
 }

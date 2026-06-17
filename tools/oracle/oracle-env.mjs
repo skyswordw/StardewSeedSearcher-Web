@@ -8,6 +8,7 @@ export const dotnet = resolve(dotnetDir, 'dotnet')
 export const upstreamDir = resolve(root, 'tools/oracle/upstream/StardewSeedSearcher')
 export const upstreamUrl = 'https://github.com/CuiYinYin2023/StardewSeedSearcher.git'
 export const upstreamCommit = '0e7d0df08f14f2c342747ca9a22c90d8edc9d892'
+const upstreamLockDir = resolve(root, '.dotnet-home/oracle-upstream.lock')
 
 export function dotnetEnv() {
   return {
@@ -60,26 +61,69 @@ export function ensureDotnet() {
 }
 
 export function ensureUpstream() {
+  withUpstreamLock(prepareUpstream)
+}
+
+function prepareUpstream() {
   if (existsSync(resolve(upstreamDir, '.git'))) {
-    run('git', ['fetch', '--depth', '1', 'origin', upstreamCommit], { cwd: upstreamDir })
-    run('git', ['checkout', '--detach', upstreamCommit], { cwd: upstreamDir })
-    return
+    run('git', ['remote', 'set-url', 'origin', upstreamUrl], { cwd: upstreamDir })
+    try {
+      run('git', ['fetch', '--depth', '1', 'origin', upstreamCommit], { cwd: upstreamDir })
+      run('git', ['checkout', '--detach', upstreamCommit], { cwd: upstreamDir })
+      return
+    } catch {
+      rmSync(upstreamDir, { recursive: true, force: true })
+    }
   }
 
   const tmpClone = '/tmp/codex-stardew-seed-searcher'
   if (existsSync(resolve(tmpClone, '.git'))) {
     ensureDir(dirname(upstreamDir))
     rmSync(upstreamDir, { recursive: true, force: true })
-    run('git', ['clone', '--depth', '1', `file://${tmpClone}`, upstreamDir])
-    run('git', ['fetch', '--depth', '1', 'origin', upstreamCommit], { cwd: upstreamDir })
-    run('git', ['checkout', '--detach', upstreamCommit], { cwd: upstreamDir })
-    return
+    try {
+      run('git', ['clone', '--depth', '1', `file://${tmpClone}`, upstreamDir])
+      run('git', ['fetch', '--depth', '1', 'origin', upstreamCommit], { cwd: upstreamDir })
+      run('git', ['checkout', '--detach', upstreamCommit], { cwd: upstreamDir })
+      return
+    } catch {
+      rmSync(upstreamDir, { recursive: true, force: true })
+      rmSync(tmpClone, { recursive: true, force: true })
+    }
   }
 
   ensureDir(dirname(upstreamDir))
   run('git', ['clone', '--depth', '1', upstreamUrl, upstreamDir])
   run('git', ['fetch', '--depth', '1', 'origin', upstreamCommit], { cwd: upstreamDir })
   run('git', ['checkout', '--detach', upstreamCommit], { cwd: upstreamDir })
+}
+
+function withUpstreamLock(callback) {
+  const startedAt = Date.now()
+  ensureDir(dirname(upstreamLockDir))
+
+  while (true) {
+    try {
+      mkdirSync(upstreamLockDir)
+      writeFileSync(resolve(upstreamLockDir, 'pid'), `${process.pid}\n`)
+      break
+    } catch {
+      if (Date.now() - startedAt > 120_000) {
+        rmSync(upstreamLockDir, { recursive: true, force: true })
+        continue
+      }
+      sleep(250)
+    }
+  }
+
+  try {
+    callback()
+  } finally {
+    rmSync(upstreamLockDir, { recursive: true, force: true })
+  }
+}
+
+function sleep(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
 }
 
 export function prepareOracleProject(startupObject, runnerFileName, runnerSource) {

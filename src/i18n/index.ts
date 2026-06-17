@@ -16,6 +16,11 @@ const zh = {
     '搜索开始后按钮会变为停止搜索，点击即可取消当前任务。',
     '基于 CuiYinYin2023/StardewSeedSearcher V1.0 的非官方 Web 移植版；如遇预测错误，请同时记录搜索条件和种子号。',
   ],
+  heavySearchGuide: {
+    prefix: '轻量搜索适合直接在网页中完成；如果要长时间、大范围或多条件重度搜索，建议参考',
+    linkText: '原作者视频',
+    suffix: '，使用可下载程序运行。',
+  },
   featureInfo: '功能说明',
   baseline: '最后更新基线：2026.6.12；适配星露谷版本：1.6.15；搜索结果支持平台：PC / 安卓 / iOS。',
   coverage: '当前覆盖：天气、仙子、矿井混合宝箱、矿井怪物层、沙漠节商人、猪车。',
@@ -155,6 +160,11 @@ export const copy: Record<Locale, AppCopy> = {
       'After a search starts, the primary button becomes Stop Search and cancels the current job.',
       'Unofficial Web port based on CuiYinYin2023/StardewSeedSearcher V1.0; report prediction issues with conditions and seed number.',
     ],
+    heavySearchGuide: {
+      prefix: 'Light searches are convenient directly in the Web page. For long, wide-range, or multi-filter heavy searches, follow the ',
+      linkText: "upstream author's video",
+      suffix: ' and use the downloadable program.',
+    },
     featureInfo: 'Feature notes',
     baseline: 'Baseline updated: 2026.6.12; Stardew Valley version: 1.6.15; targets PC / Android / iOS results.',
     coverage: 'Current coverage: weather, crop fairy, mixed mine chests, monster floors, Desert Festival vendors, traveling cart.',

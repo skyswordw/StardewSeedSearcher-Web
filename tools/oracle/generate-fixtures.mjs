@@ -108,7 +108,6 @@ public static class OracleFixtureRunner
             RequireQty5 = false,
             MinOccurrences = 1
         };
-
         var fixture = new
         {
             meta = new
@@ -272,7 +271,11 @@ public static class OracleFixtureRunner
                         CartConditions: Array.Empty<CartCondition>(),
                         OutputLimit: 5
                     )
-                )
+                ),
+                UpstreamFeedbackSearchCase("upstream-feedback-mixed-heavy-false-positive-window", 175000, 176000),
+                UpstreamFeedbackSearchCase("upstream-feedback-mixed-heavy-first-match-window", 2373000, 2373100),
+                UpstreamFeedbackSearchCase("upstream-feedback-mixed-heavy-second-match-window", 2381150, 2381250),
+                UpstreamFeedbackSearchCase("upstream-feedback-mixed-heavy-twentieth-match-window", 12526100, 12526250)
             }
         };
 
@@ -398,6 +401,62 @@ public static class OracleFixtureRunner
             request = SearchRequestObject(spec),
             expected = Search(spec)
         };
+    }
+
+    private static object UpstreamFeedbackSearchCase(string name, int startSeed, int endSeed)
+    {
+        return SearchCase(
+            name,
+            new SearchSpec(
+                StartSeed: startSeed,
+                EndSeed: endSeed,
+                UseLegacyRandom: false,
+                WeatherConditions: new[] { new WeatherCondition { Season = 0, StartDay = 1, EndDay = 28, MinRainDays = 10 } },
+                FairyConditions: new[]
+                {
+                    new FairyCondition
+                    {
+                        StartYear = 1,
+                        StartSeason = 0,
+                        StartDay = 1,
+                        EndYear = 1,
+                        EndSeason = 0,
+                        EndDay = 28,
+                        MinOccurrences = 2
+                    }
+                },
+                MineChestConditions: new[] { new MineChestPredictor.MineChestCondition { Floor = 110, ItemName = "巨锤" } },
+                MonsterLevelConditions: new[]
+                {
+                    new MonsterLevelPredictor.MonsterLevelCondition
+                    {
+                        StartSeason = 0,
+                        StartDay = 5,
+                        EndSeason = 0,
+                        EndDay = 5,
+                        StartLevel = 1,
+                        EndLevel = 40
+                    }
+                },
+                DesertFestivalCondition: new DesertFestivalSpec(RequireJas: true, RequireLeah: false),
+                CartConditions: new[]
+                {
+                    new CartCondition
+                    {
+                        StartYear = 1,
+                        StartSeason = 0,
+                        StartDay = 5,
+                        EndYear = 1,
+                        EndSeason = 2,
+                        EndDay = 28,
+                        ItemName = "电池组",
+                        RequireQty5 = false,
+                        MinOccurrences = 1
+                    }
+                },
+                OutputLimit: 20
+            )
+        );
     }
 
     private static int[] Search(SearchSpec spec)

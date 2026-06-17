@@ -26,6 +26,9 @@ test.describe('functional UI coverage', () => {
     await expect(page.getByRole('button', { name: /导出所有种子号/ })).toBeDisabled()
     await expect(page.getByTestId('github-repo-link')).toHaveAttribute('href', 'https://github.com/skyswordw/StardewSeedSearcher-Web')
     await expect(page.getByTestId('github-repo-link')).toBeVisible()
+    await expect(page.getByTestId('upstream-video-link')).toHaveAttribute('href', 'https://www.bilibili.com/video/BV1XTJV6CEvj')
+    await expect(page.getByTestId('upstream-video-link')).toHaveText('原作者视频')
+    await expect(page.getByText('重度搜索')).toBeVisible()
     await assertNoHorizontalOverflow(page)
   })
 
@@ -38,6 +41,8 @@ test.describe('functional UI coverage', () => {
     await expect(page.getByTestId('status-message')).toHaveText('Ready to search')
     await expect(page.getByTestId('start-search')).toContainText('Start search')
     await expect(page.getByRole('button', { name: /Export seed numbers/ })).toBeDisabled()
+    await expect(page.getByTestId('upstream-video-link')).toHaveText("upstream author's video")
+    await expect(page.getByTestId('upstream-video-link')).toHaveAttribute('href', 'https://www.bilibili.com/video/BV1XTJV6CEvj')
     await expect(featureSection(page, 'weather')).toContainText('Weather filter')
     await expect(page.getByTestId('search-range')).toHaveValue('100000')
     await assertNoHorizontalOverflow(page)

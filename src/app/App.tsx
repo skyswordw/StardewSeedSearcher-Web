@@ -297,6 +297,18 @@ function App() {
               {t.guideItems.map((item) => (
                 <li key={item}>{item}</li>
               ))}
+              <li>
+                {t.heavySearchGuide.prefix}
+                <a
+                  data-testid="upstream-video-link"
+                  href="https://www.bilibili.com/video/BV1XTJV6CEvj"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {t.heavySearchGuide.linkText}
+                </a>
+                {t.heavySearchGuide.suffix}
+              </li>
             </ul>
           </details>
 

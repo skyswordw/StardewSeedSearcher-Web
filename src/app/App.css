@@ -214,6 +214,17 @@ button:disabled {
   line-height: 1.7;
 }
 
+.guide a {
+  color: var(--leaf-dark);
+  font-weight: 900;
+  text-underline-offset: 3px;
+}
+
+.guide a:hover,
+.guide a:focus-visible {
+  color: var(--leaf);
+}
+
 .feature-copy {
   padding-left: 18px;
 }
