@@ -37,9 +37,13 @@ Use TypeScript, React function components, 2-space indentation, single quotes, a
 
 Add Vitest tests next to code as `*.test.ts`. Search-core changes should extend the golden fixture or add data-driven assertions. UI changes should update Playwright coverage in `e2e/`; stable screenshot changes require updating the committed Chromium baselines. Run `npm run test:e2e` after UI, worker, or browser-compatibility changes.
 
+For upstream-reported parity bugs, transcribe the reported text Test Case exactly into oracle tooling before using screenshots as supporting evidence. Screenshots can guide investigation, but they must not override the written conditions unless the reporter explicitly corrects them.
+
 ## Commit & Pull Request Guidelines
 
 History uses short, imperative commit subjects, for example `Improve Safari compatibility` and `Clarify unofficial Web port branding`. Keep commits focused. PRs should describe user-visible changes, list verification commands, note fixture or screenshot updates, and include screenshots for UI changes. Link related issues when available.
+
+Before posting or editing public upstream GitHub issues, PR comments, or maintainer-facing replies, draft the exact message for user confirmation first. Do not send or edit external comments without explicit approval in the current conversation.
 
 ## Attribution & Oracle Notes
 
