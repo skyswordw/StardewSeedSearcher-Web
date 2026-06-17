@@ -13,6 +13,7 @@ const zh = {
   guide: '操作指南',
   guideItems: [
     '打开网页就能搜索种子，不需要额外下载或安装工具。',
+    '大范围搜索会自动使用多个 Web Worker 并行处理；可按设备性能调整最大 Worker 数。',
     '搜索开始后按钮会变为停止搜索，点击即可取消当前任务。',
     '基于 CuiYinYin2023/StardewSeedSearcher V1.0 的非官方 Web 移植版；如遇预测错误，请同时记录搜索条件和种子号。',
   ],
@@ -159,6 +160,7 @@ export const copy: Record<Locale, AppCopy> = {
     guide: 'Guide',
     guideItems: [
       'Open the Web page and start searching seeds; no extra download or install is needed.',
+      'Wide-range searches can use multiple Web Workers in parallel; tune Max workers for your device.',
       'After a search starts, the primary button becomes Stop Search and cancels the current job.',
       'Unofficial Web port based on CuiYinYin2023/StardewSeedSearcher V1.0; report prediction issues with conditions and seed number.',
     ],

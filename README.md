@@ -146,7 +146,7 @@ npm run build
 npm run test:e2e -- --project=chromium
 ```
 
-当前浏览器搜索运行在单个 Web Worker 中。若后续引入 worker pool，必须保持结果顺序、`outputLimit`、取消语义和进度单调性。
+当前浏览器搜索会按范围和设备能力自动使用 Web Worker pool；发布前需继续保持结果顺序、`outputLimit`、取消语义和进度单调性。
 
 ## Attribution
 
