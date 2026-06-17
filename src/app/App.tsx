@@ -11,7 +11,7 @@ import './App.css'
 import logo from '../assets/logo.png'
 import { copy, localeNames, type Locale } from '../i18n'
 import { copyTextToClipboard, createJobId, randomInt } from '../runtime/browserCompat'
-import { SearchWorkerPool, type SearchPoolMessage } from '../runtime/searchWorkerPool'
+import { defaultMaxSearchWorkers, maxSearchWorkersForHardware, SearchWorkerPool, type SearchPoolMessage } from '../runtime/searchWorkerPool'
 import {
   allCartItemNames,
   mineChestFloors,
@@ -40,7 +40,9 @@ function App() {
   const [searchRange, setSearchRange] = useState('100000')
   const [loopSearch, setLoopSearch] = useState(true)
   const [useLegacyRandom, setUseLegacyRandom] = useState(false)
+  const maxWorkerLimit = useMemo(() => maxSearchWorkersForHardware(), [])
   const [outputLimit, setOutputLimit] = useState(20)
+  const [maxWorkers, setMaxWorkers] = useState(() => defaultMaxSearchWorkers())
 
   const [weatherEnabled, setWeatherEnabled] = useState(true)
   const [weatherConditions, setWeatherConditions] = useState<WeatherCondition[]>([
@@ -89,13 +91,13 @@ function App() {
   const [activeRange, setActiveRange] = useState<{ start: number; end: number } | null>(null)
   const [stoppedEarly, setStoppedEarly] = useState<boolean | null>(null)
 
-  const workerPoolRef = useRef<SearchWorkerPool | null>(null)
+  const workerPoolRef = useRef<{ maxWorkers: number; pool: SearchWorkerPool } | null>(null)
   const activeJobId = useRef<string | null>(null)
   const savedStartSeed = useRef(1)
 
   useEffect(() => {
     return () => {
-      workerPoolRef.current?.dispose()
+      workerPoolRef.current?.pool.dispose()
       workerPoolRef.current = null
     }
   }, [])
@@ -117,6 +119,7 @@ function App() {
   function validate(): string | null {
     if (!Number.isFinite(startSeed) || startSeed < 1 || startSeed > INT_MAX) return t.validation.startSeed(INT_MAX)
     if (outputLimit < 1 || outputLimit > 500) return t.validation.outputLimit
+    if (maxWorkers < 1 || maxWorkers > maxWorkerLimit) return t.validation.maxWorkers(maxWorkerLimit)
     if (!weatherEnabled && !fairyEnabled && !mineChestEnabled && !monsterLevelEnabled && !desertFestivalEnabled && !cartEnabled) {
       return t.validation.featureRequired
     }
@@ -154,8 +157,14 @@ function App() {
     }
 
     const request = buildRequest()
-    const workerPool = workerPoolRef.current ?? new SearchWorkerPool()
-    workerPoolRef.current = workerPool
+    const workerPoolState =
+      workerPoolRef.current?.maxWorkers === maxWorkers
+        ? workerPoolRef.current
+        : { maxWorkers, pool: new SearchWorkerPool({ maxWorkers }) }
+    if (workerPoolRef.current && workerPoolRef.current !== workerPoolState) {
+      workerPoolRef.current.pool.dispose()
+    }
+    workerPoolRef.current = workerPoolState
     const jobId = createJobId()
     activeJobId.current = jobId
     savedStartSeed.current = startSeed
@@ -173,7 +182,7 @@ function App() {
     setSearchStatus({ type: 'searching', start: request.startSeed, end: request.endSeed })
     setIsSearching(true)
 
-    workerPool.startSearch(request, jobId, (message) => {
+    workerPoolState.pool.startSearch(request, jobId, (message) => {
       if (jobId !== activeJobId.current) return
       handleWorkerMessage(message, request)
     })
@@ -181,7 +190,7 @@ function App() {
 
   function stopSearch() {
     setSearchStatus({ type: 'stopping' })
-    workerPoolRef.current?.cancelSearch(activeJobId.current)
+    workerPoolRef.current?.pool.cancelSearch(activeJobId.current)
   }
 
   function setRandomStartSeed() {
@@ -347,6 +356,7 @@ function App() {
               </select>
             </label>
             <NumberField label={t.outputLimit} testId="output-limit" value={outputLimit} min={1} max={500} onChange={setOutputLimit} />
+            <NumberField label={t.maxWorkers} testId="max-workers" value={maxWorkers} min={1} max={maxWorkerLimit} onChange={setMaxWorkers} />
           </div>
 
           <div className="quick-row">

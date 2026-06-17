@@ -27,4 +27,10 @@ Use `--compare-pool` to run each synchronous scenario twice: once through the si
 npm run bench:search -- --scenario upstream-feedback-mixed-heavy --range 10k --repeat 3 --compare-pool
 ```
 
-The pooled benchmark is a Linux throughput baseline for heavy searches. It is not a browser UI latency measurement, because worker startup and Vite SSR loading differ from Vite's bundled Web Worker path.
+Pass one or more worker counts to sweep machine-specific settings. The automatic default stays conservative at `min(8, available cores - 1)`, while explicit values can use more of the machine up to `available cores - 1`:
+
+```sh
+npm run bench:search -- --scenario upstream-feedback-mixed-heavy --range 1m --repeat 5 --compare-pool --pool-workers 1,2,4,8,16,31
+```
+
+The pooled benchmark reports worker setup time separately and reuses the pool across repeated runs. It is still a Linux throughput baseline, not a browser UI latency measurement, because Node `worker_threads` and Vite SSR loading differ from Vite's bundled Web Worker path.

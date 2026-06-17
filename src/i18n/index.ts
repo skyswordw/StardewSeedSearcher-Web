@@ -27,6 +27,7 @@ const zh = {
   startSeed: '起始种子',
   searchRange: '搜索范围',
   outputLimit: '输出上限',
+  maxWorkers: '最大 Worker',
   min: '最小',
   randomStart: '随机起点',
   loopSearch: '搜索后自动更新起始值',
@@ -106,6 +107,7 @@ const zh = {
   validation: {
     startSeed: (max: number) => `起始种子必须在 1 ~ ${max} 之间`,
     outputLimit: '输出数量必须在 1-500 之间',
+    maxWorkers: (max: number) => `最大 Worker 数必须在 1-${max} 之间`,
     featureRequired: '请至少启用一个筛选条件',
     weatherDateOrder: '天气错误：起始日期不能大于结束日期',
     weatherRainRange: '天气错误：雨天数不能超过范围总天数',
@@ -171,6 +173,7 @@ export const copy: Record<Locale, AppCopy> = {
     startSeed: 'Start seed',
     searchRange: 'Search range',
     outputLimit: 'Output limit',
+    maxWorkers: 'Max workers',
     min: 'Min',
     randomStart: 'Random start',
     loopSearch: 'Auto-advance start seed',
@@ -250,6 +253,7 @@ export const copy: Record<Locale, AppCopy> = {
     validation: {
       startSeed: (max: number) => `Start seed must be between 1 and ${max}`,
       outputLimit: 'Output limit must be between 1 and 500',
+      maxWorkers: (max: number) => `Max workers must be between 1 and ${max}`,
       featureRequired: 'Enable at least one filter',
       weatherDateOrder: 'Weather error: start day cannot be after end day',
       weatherRainRange: 'Weather error: rain days cannot exceed the selected range',

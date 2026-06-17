@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { SearchWorkerPool, createSearchChunks, selectSearchWorkerCount, type SearchPoolMessage } from './searchWorkerPool'
+import {
+  SearchWorkerPool,
+  createSearchChunks,
+  maxSearchWorkersForHardware,
+  selectSearchWorkerCount,
+  type SearchPoolMessage,
+} from './searchWorkerPool'
 import type { SearchMessage, SearchRequest } from '../search-core'
 
 type WorkerInbound =
@@ -88,6 +94,14 @@ describe('search worker pool', () => {
     expect(createSearchChunks(request({ endSeed: 100_000 }), 1)).toEqual([
       expect.objectContaining({ index: 0, startSeed: 1, endSeed: 100_000, total: 100_000 }),
     ])
+  })
+
+  it('allows explicit high worker limits up to the reported hardware capacity', () => {
+    expect(selectSearchWorkerCount(request({ endSeed: 1_000_000 }), 32, 8)).toBe(4)
+    expect(selectSearchWorkerCount(request({ endSeed: 1_000_000 }), 32, 16)).toBe(16)
+    expect(selectSearchWorkerCount(request({ endSeed: 10_000_000 }), 64, 40)).toBe(40)
+    expect(maxSearchWorkersForHardware(32)).toBe(31)
+    expect(maxSearchWorkersForHardware(64)).toBe(63)
   })
 
   it('buffers later chunks so outputLimit uses global seed order', () => {

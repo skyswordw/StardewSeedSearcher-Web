@@ -54,7 +54,7 @@ export interface SearchWorkerPoolRun {
   workerCount: number
 }
 
-const MAX_WORKERS = 8
+export const DEFAULT_MAX_SEARCH_WORKERS = 8
 const MIN_CHUNK_SIZE = 50_000
 const MAX_CHUNK_SIZE = 1_000_000
 
@@ -68,7 +68,7 @@ export class SearchWorkerPool {
   constructor(options: SearchWorkerPoolOptions = {}) {
     this.createWorker = options.createWorker ?? createBrowserSearchWorker
     this.hardwareConcurrency = options.hardwareConcurrency ?? globalThis.navigator?.hardwareConcurrency ?? 1
-    this.maxWorkers = Math.max(1, Math.min(MAX_WORKERS, Math.trunc(options.maxWorkers ?? MAX_WORKERS)))
+    this.maxWorkers = normalizeWorkerLimit(options.maxWorkers ?? DEFAULT_MAX_SEARCH_WORKERS)
   }
 
   startSearch(request: SearchRequest, jobId: string, onMessage: (message: SearchPoolMessage) => void): SearchWorkerPoolRun {
@@ -273,13 +273,30 @@ export class SearchWorkerPool {
   }
 }
 
-export function selectSearchWorkerCount(request: SearchRequest, hardwareConcurrency = 1, maxWorkers = MAX_WORKERS): number {
+export function selectSearchWorkerCount(
+  request: SearchRequest,
+  hardwareConcurrency = 1,
+  maxWorkers = DEFAULT_MAX_SEARCH_WORKERS,
+): number {
   const total = searchTotal(request)
+  const requestedLimit = normalizeWorkerLimit(maxWorkers)
   const hardwareLimit = Math.max(1, Math.trunc(hardwareConcurrency) - 1)
-  const cappedLimit = Math.max(1, Math.min(MAX_WORKERS, Math.trunc(maxWorkers), hardwareLimit))
-  const rangeLimit = total >= 10_000_000 ? 8 : total >= 1_000_000 ? 4 : total >= 250_000 ? 2 : 1
+  const cappedLimit = Math.max(1, Math.min(requestedLimit, hardwareLimit))
+  const automaticRangeLimit = total >= 10_000_000 ? DEFAULT_MAX_SEARCH_WORKERS : total >= 1_000_000 ? 4 : total >= 250_000 ? 2 : 1
+  const explicitRangeLimit =
+    requestedLimit > DEFAULT_MAX_SEARCH_WORKERS
+      ? Math.max(automaticRangeLimit, Math.min(cappedLimit, Math.ceil(total / MIN_CHUNK_SIZE)))
+      : automaticRangeLimit
 
-  return Math.max(1, Math.min(cappedLimit, rangeLimit))
+  return Math.max(1, Math.min(cappedLimit, explicitRangeLimit))
+}
+
+export function defaultMaxSearchWorkers(hardwareConcurrency = globalThis.navigator?.hardwareConcurrency ?? 1): number {
+  return Math.max(1, Math.min(DEFAULT_MAX_SEARCH_WORKERS, maxSearchWorkersForHardware(hardwareConcurrency)))
+}
+
+export function maxSearchWorkersForHardware(hardwareConcurrency = globalThis.navigator?.hardwareConcurrency ?? 1): number {
+  return Math.max(1, Math.trunc(hardwareConcurrency) - 1)
 }
 
 export function createSearchChunks(request: SearchRequest, workerCount: number): SearchChunk[] {
@@ -348,4 +365,8 @@ function elapsedSeconds(startedAt: number): number {
 
 function createBrowserSearchWorker(): WorkerLike {
   return new Worker(new URL('../workers/search.worker.ts', import.meta.url), { type: 'module' })
+}
+
+function normalizeWorkerLimit(value: number): number {
+  return Math.max(1, Math.trunc(value))
 }

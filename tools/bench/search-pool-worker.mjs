@@ -6,7 +6,7 @@ const server = await createServer({
   configFile: false,
   logLevel: 'silent',
   appType: 'custom',
-  server: { middlewareMode: true, hmr: false, ws: false },
+  server: { middlewareMode: true, hmr: false, ws: false, watch: null },
 })
 
 const core = await server.ssrLoadModule('/src/search-core/index.ts')
