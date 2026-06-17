@@ -273,9 +273,9 @@ public static class OracleFixtureRunner
                     )
                 ),
                 UpstreamFeedbackSearchCase("upstream-feedback-mixed-heavy-false-positive-window", 175000, 176000),
-                UpstreamFeedbackSearchCase("upstream-feedback-mixed-heavy-first-match-window", 2373000, 2373100),
-                UpstreamFeedbackSearchCase("upstream-feedback-mixed-heavy-second-match-window", 2381150, 2381250),
-                UpstreamFeedbackSearchCase("upstream-feedback-mixed-heavy-twentieth-match-window", 12526100, 12526250)
+                UpstreamFeedbackSearchCase("upstream-feedback-mixed-heavy-first-match-window", 7267900, 7268000),
+                UpstreamFeedbackSearchCase("upstream-feedback-mixed-heavy-second-match-window", 9274600, 9274700),
+                UpstreamFeedbackSearchCase("upstream-feedback-mixed-heavy-twentieth-match-window", 35542100, 35542220)
             }
         };
 
@@ -445,9 +445,9 @@ public static class OracleFixtureRunner
                     {
                         StartYear = 1,
                         StartSeason = 0,
-                        StartDay = 5,
+                        StartDay = 1,
                         EndYear = 1,
-                        EndSeason = 2,
+                        EndSeason = 0,
                         EndDay = 28,
                         ItemName = "电池组",
                         RequireQty5 = false,

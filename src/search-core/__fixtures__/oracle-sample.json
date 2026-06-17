@@ -785,9 +785,9 @@
           {
             "startYear": 1,
             "startSeason": 0,
-            "startDay": 5,
+            "startDay": 1,
             "endYear": 1,
-            "endSeason": 2,
+            "endSeason": 0,
             "endDay": 28,
             "itemName": "\u7535\u6C60\u7EC4",
             "requireQty5": false,
@@ -801,8 +801,8 @@
     {
       "name": "upstream-feedback-mixed-heavy-first-match-window",
       "request": {
-        "startSeed": 2373000,
-        "endSeed": 2373100,
+        "startSeed": 7267900,
+        "endSeed": 7268000,
         "useLegacyRandom": false,
         "weatherConditions": [
           {
@@ -847,9 +847,9 @@
           {
             "startYear": 1,
             "startSeason": 0,
-            "startDay": 5,
+            "startDay": 1,
             "endYear": 1,
-            "endSeason": 2,
+            "endSeason": 0,
             "endDay": 28,
             "itemName": "\u7535\u6C60\u7EC4",
             "requireQty5": false,
@@ -859,14 +859,14 @@
         "outputLimit": 20
       },
       "expected": [
-        2373057
+        7267933
       ]
     },
     {
       "name": "upstream-feedback-mixed-heavy-second-match-window",
       "request": {
-        "startSeed": 2381150,
-        "endSeed": 2381250,
+        "startSeed": 9274600,
+        "endSeed": 9274700,
         "useLegacyRandom": false,
         "weatherConditions": [
           {
@@ -911,9 +911,9 @@
           {
             "startYear": 1,
             "startSeason": 0,
-            "startDay": 5,
+            "startDay": 1,
             "endYear": 1,
-            "endSeason": 2,
+            "endSeason": 0,
             "endDay": 28,
             "itemName": "\u7535\u6C60\u7EC4",
             "requireQty5": false,
@@ -923,14 +923,14 @@
         "outputLimit": 20
       },
       "expected": [
-        2381215
+        9274648
       ]
     },
     {
       "name": "upstream-feedback-mixed-heavy-twentieth-match-window",
       "request": {
-        "startSeed": 12526100,
-        "endSeed": 12526250,
+        "startSeed": 35542100,
+        "endSeed": 35542220,
         "useLegacyRandom": false,
         "weatherConditions": [
           {
@@ -975,9 +975,9 @@
           {
             "startYear": 1,
             "startSeason": 0,
-            "startDay": 5,
+            "startDay": 1,
             "endYear": 1,
-            "endSeason": 2,
+            "endSeason": 0,
             "endDay": 28,
             "itemName": "\u7535\u6C60\u7EC4",
             "requireQty5": false,
@@ -987,7 +987,7 @@
         "outputLimit": 20
       },
       "expected": [
-        12526188
+        35542186
       ]
     }
   ]

@@ -142,9 +142,9 @@ const scenarioDefinitions = {
         {
           startYear: 1,
           startSeason: 0,
-          startDay: 5,
+          startDay: 1,
           endYear: 1,
-          endSeason: 2,
+          endSeason: 0,
           endDay: 28,
           itemName: '电池组',
           requireQty5: false,
