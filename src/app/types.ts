@@ -17,6 +17,7 @@ export type SearchStatus =
   | { type: 'stopping' }
   | { type: 'stopped'; totalFound: number }
   | { type: 'completed'; totalFound: number }
+  | { type: 'failed'; message: string }
   | { type: 'copyFailed' }
 
 export type FeatureId = 'weather' | 'fairy' | 'mineChest' | 'monsterLevel' | 'desertFestival' | 'cart'

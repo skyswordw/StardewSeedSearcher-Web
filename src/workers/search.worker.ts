@@ -14,13 +14,16 @@ let activeJobId: string | null = null
 self.onmessage = (event: MessageEvent<WorkerInbound>) => {
   const message = event.data
   if (message.type === 'cancel-search') {
-    controller?.abort()
+    if (!message.jobId || message.jobId === activeJobId) {
+      controller?.abort()
+    }
     return
   }
 
   if (message.type === 'start-search') {
     controller?.abort()
-    controller = new AbortController()
+    const jobController = new AbortController()
+    controller = jobController
     activeJobId = message.jobId
     const jobId = message.jobId
 
@@ -30,7 +33,7 @@ self.onmessage = (event: MessageEvent<WorkerInbound>) => {
           await searchSeedsAsync(
             message.request,
             {
-              signal: controller?.signal,
+              signal: jobController.signal,
               onMessage(searchMessage) {
                 postMessage({ jobId, ...searchMessage } satisfies WorkerOutbound)
               },

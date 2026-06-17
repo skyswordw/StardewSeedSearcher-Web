@@ -27,6 +27,12 @@ Random parity sampling complements the committed golden matrix. It generates rep
 `SearchRequest` cases with a fixed sampler seed, runs both TypeScript search-core and the pinned C#
 oracle, and compares found seeds plus found seed details.
 
+By default the sampler runs random cases plus a targeted edge-case profile covering late-month
+weather, multi-occurrence fairy windows, multi-floor mine chests, high-level monster floors, full
+traveling cart data representatives, desert festival vendor combinations, date boundaries, and
+all-feature mixed searches. Use `--profile random`, `--profile targeted`, or `--profile both` to
+choose the coverage set.
+
 Run the CI-sized sample:
 
 ```bash
@@ -43,7 +49,7 @@ Failures print the sampler seed, case index, generated request JSON, TypeScript 
 result. Reproduce one failing case with:
 
 ```bash
-npm run parity:sample -- --seed 20260616 --case-index 17 --window 2000
+npm run parity:sample -- --seed 20260616 --profile both --cases 50 --case-index 17 --window 2000
 ```
 
 This randomized sampler is a statistical parity check, not an exhaustive proof over every possible

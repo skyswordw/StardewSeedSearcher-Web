@@ -19,6 +19,7 @@ const DEFAULT_SAMPLER_SEED = 20_260_616
 const DEFAULT_CASES = 50
 const DEFAULT_WINDOW = 2000
 const DEFAULT_OUTPUT_LIMIT = 20
+const DEFAULT_PROFILE = 'both'
 const MAX_START_SEED = 200_000
 
 const mineChestItems = {
@@ -53,6 +54,7 @@ const cartItems = [
   '采矿月刊',
   '战斗季刊',
 ]
+const allCartItems = loadCartItemNames()
 
 const featureFamilies = [
   'weather',
@@ -71,6 +73,7 @@ function parseArgs(argv) {
     cases: DEFAULT_CASES,
     window: DEFAULT_WINDOW,
     outputLimit: DEFAULT_OUTPUT_LIMIT,
+    profile: DEFAULT_PROFILE,
     caseIndex: null,
   }
 
@@ -97,6 +100,12 @@ function parseArgs(argv) {
       case 'output-limit':
         options.outputLimit = parseInteger(value, rawName)
         break
+      case 'profile':
+        if (!['random', 'targeted', 'both'].includes(value)) {
+          throw new Error('--profile must be one of: random, targeted, both')
+        }
+        options.profile = value
+        break
       case 'case-index':
         options.caseIndex = parseInteger(value, rawName)
         break
@@ -112,6 +121,31 @@ function parseArgs(argv) {
   return options
 }
 
+function loadCartItemNames() {
+  const raw = readFileSync(resolve(root, 'src/search-core/data/TravelingCartData.json'), 'utf8').replace(/^\uFEFF/, '')
+  const data = JSON.parse(raw)
+  const names = Object.values(data)
+    .filter((item) => {
+      const id = Number.parseInt(item.Id, 10)
+      return (
+        Number.isFinite(id) &&
+        id >= 2 &&
+        id <= 789 &&
+        item.Price > 0 &&
+        !item.OffLimits &&
+        (item.Category < 0 || item.Category === -999) &&
+        item.Type !== 'Arch' &&
+        item.Type !== 'Minerals' &&
+        item.Type !== 'Quest'
+      )
+    })
+    .map((item) => item.Name)
+
+  return Array.from(new Set([...names, '星露谷年历', '鱼饵和浮漂', '樵夫周刊', '采矿月刊', '战斗季刊'])).sort((a, b) =>
+    a.localeCompare(b, 'zh-CN'),
+  )
+}
+
 function parseInteger(value, name) {
   const parsed = Number.parseInt(value, 10)
   if (!Number.isSafeInteger(parsed)) throw new Error(`--${name} must be an integer`)
@@ -119,12 +153,34 @@ function parseInteger(value, name) {
 }
 
 function generateCases(options) {
+  const cases = []
+  if (options.profile === 'random' || options.profile === 'both') {
+    cases.push(...generateRandomCases(options, 0))
+  }
+  if (options.profile === 'targeted' || options.profile === 'both') {
+    cases.push(...generateTargetedCases(options, cases.length))
+  }
+
+  if (options.caseIndex !== null) {
+    const testCase = cases.find((candidate) => candidate.index === options.caseIndex)
+    if (!testCase) {
+      throw new Error(`No generated case exists at --case-index ${options.caseIndex} for --profile ${options.profile}`)
+    }
+    return [testCase]
+  }
+
+  return cases
+}
+
+function generateRandomCases(options, startIndex) {
   const rng = new XorShift32(options.seed)
   const cases = []
-  const totalToGenerate = options.caseIndex === null ? options.cases : Math.max(options.cases, options.caseIndex + 1)
+  const totalToGenerate =
+    options.profile === 'random' && options.caseIndex !== null ? Math.max(options.cases, options.caseIndex + 1) : options.cases
 
-  for (let index = 0; index < totalToGenerate; index += 1) {
-    const family = featureFamilies[index % featureFamilies.length]
+  for (let offset = 0; offset < totalToGenerate; offset += 1) {
+    const index = startIndex + offset
+    const family = featureFamilies[offset % featureFamilies.length]
     const request = generateRequest(rng, family, options)
     cases.push({
       index,
@@ -134,7 +190,7 @@ function generateCases(options) {
     })
   }
 
-  return options.caseIndex === null ? cases.slice(0, options.cases) : [cases[options.caseIndex]]
+  return cases
 }
 
 function generateRequest(rng, family, options) {
@@ -267,9 +323,242 @@ function randomCartCondition(rng) {
     endYear: dateWindow.end.year,
     endSeason: dateWindow.end.season,
     endDay: dateWindow.end.day,
-    itemName: rng.pick(cartItems),
-    requireQty5: rng.int(0, 9) === 0,
-    minOccurrences: 1,
+    itemName: rng.int(0, 4) === 0 ? rng.pick(allCartItems) : rng.pick(cartItems),
+    requireQty5: rng.int(0, 5) === 0,
+    minOccurrences: rng.int(0, 5) === 0 ? 2 : 1,
+  }
+}
+
+function generateTargetedCases(options, startIndex) {
+  const cases = targetedRequestSpecs(options).map((spec, offset) => ({
+    index: startIndex + offset,
+    samplerSeed: options.seed,
+    family: `targeted:${spec.name}`,
+    request: spec.request,
+  }))
+
+  return cases
+}
+
+function targetedRequestSpecs(options) {
+  const outputLimit = Math.max(options.outputLimit, 8)
+  const make = (overrides) => emptyRequest({
+    startSeed: 1,
+    endSeed: Math.max(1, overrides.endSeed),
+    useLegacyRandom: Boolean(overrides.useLegacyRandom),
+    outputLimit: overrides.outputLimit ?? outputLimit,
+  })
+
+  function request(overrides) {
+    return {
+      ...make(overrides),
+      startSeed: overrides.startSeed ?? 1,
+      weatherConditions: overrides.weatherConditions ?? [],
+      fairyConditions: overrides.fairyConditions ?? [],
+      mineChestConditions: overrides.mineChestConditions ?? [],
+      monsterLevelConditions: overrides.monsterLevelConditions ?? [],
+      desertFestivalCondition: overrides.desertFestivalCondition ?? null,
+      cartConditions: overrides.cartConditions ?? [],
+    }
+  }
+
+  return [
+    {
+      name: 'weather-late-month-high-rain',
+      request: request({
+        endSeed: 60_000,
+        weatherConditions: [
+          { season: 0, startDay: 25, endDay: 28, minRainDays: 1 },
+          { season: 1, startDay: 23, endDay: 28, minRainDays: 3 },
+          { season: 2, startDay: 1, endDay: 28, minRainDays: 10 },
+        ],
+      }),
+    },
+    {
+      name: 'weather-fixed-forced-rain-legacy',
+      request: request({
+        endSeed: 500,
+        useLegacyRandom: true,
+        weatherConditions: [
+          { season: 0, startDay: 3, endDay: 3, minRainDays: 1 },
+          { season: 1, startDay: 13, endDay: 13, minRainDays: 1 },
+        ],
+      }),
+    },
+    {
+      name: 'fairy-two-occurrences',
+      request: request({
+        endSeed: 120_000,
+        fairyConditions: [
+          { startYear: 1, startSeason: 0, startDay: 1, endYear: 1, endSeason: 2, endDay: 28, minOccurrences: 2 },
+        ],
+      }),
+    },
+    {
+      name: 'fairy-cross-year-legacy',
+      request: request({
+        endSeed: 120_000,
+        useLegacyRandom: true,
+        fairyConditions: [
+          { startYear: 1, startSeason: 2, startDay: 27, endYear: 2, endSeason: 0, endDay: 2, minOccurrences: 1 },
+        ],
+      }),
+    },
+    {
+      name: 'mine-chest-multiple-floors',
+      request: request({
+        endSeed: 200_000,
+        mineChestConditions: [
+          { floor: 10, itemName: '皮靴' },
+          { floor: 20, itemName: '钢制轻剑' },
+          { floor: 50, itemName: '冻土靴' },
+          { floor: 110, itemName: '巨锤' },
+        ],
+      }),
+    },
+    {
+      name: 'mine-chest-same-floor-conflict-legacy',
+      request: request({
+        endSeed: 5_000,
+        useLegacyRandom: true,
+        mineChestConditions: [
+          { floor: 10, itemName: '皮靴' },
+          { floor: 10, itemName: '木剑' },
+        ],
+      }),
+    },
+    {
+      name: 'monster-high-level-boundaries',
+      request: request({
+        endSeed: 80_000,
+        monsterLevelConditions: [
+          { startSeason: 0, endSeason: 0, startDay: 5, endDay: 5, startLevel: 77, endLevel: 119 },
+          { startSeason: 1, endSeason: 1, startDay: 28, endDay: 28, startLevel: 116, endLevel: 119 },
+        ],
+      }),
+    },
+    {
+      name: 'monster-mod40-boundaries-legacy',
+      request: request({
+        endSeed: 80_000,
+        useLegacyRandom: true,
+        monsterLevelConditions: [
+          { startSeason: 0, endSeason: 0, startDay: 5, endDay: 5, startLevel: 5, endLevel: 6 },
+          { startSeason: 0, endSeason: 0, startDay: 19, endDay: 19, startLevel: 19, endLevel: 19 },
+          { startSeason: 0, endSeason: 0, startDay: 28, endDay: 28, startLevel: 29, endLevel: 30 },
+        ],
+      }),
+    },
+    {
+      name: 'cart-full-data-representatives',
+      request: request({
+        endSeed: 80_000,
+        cartConditions: [
+          cartCondition({ itemName: pickCartItem('电池组'), startDay: 5, endSeason: 2, endDay: 28 }),
+          cartCondition({ itemName: pickCartItem('红叶卷心菜'), startDay: 5, endSeason: 2, endDay: 28 }),
+        ],
+      }),
+    },
+    {
+      name: 'cart-qty-five-and-skillbook-legacy',
+      request: request({
+        endSeed: 120_000,
+        useLegacyRandom: true,
+        cartConditions: [
+          cartCondition({ itemName: pickCartItem('红叶卷心菜'), startDay: 5, endSeason: 2, endDay: 28, requireQty5: true }),
+          cartCondition({ itemName: '星露谷年历', startDay: 5, endSeason: 2, endDay: 28 }),
+        ],
+      }),
+    },
+    {
+      name: 'cart-special-days',
+      request: request({
+        endSeed: 120_000,
+        cartConditions: [
+          cartCondition({ itemName: pickCartItem('电池组'), startDay: 15, endDay: 17 }),
+          cartCondition({ itemName: pickCartItem('红叶卷心菜'), startSeason: 3, startDay: 15, endSeason: 3, endDay: 17 }),
+        ],
+      }),
+    },
+    {
+      name: 'desert-festival-both-vendors',
+      request: request({
+        endSeed: 20_000,
+        desertFestivalCondition: { requireJas: true, requireLeah: true },
+      }),
+    },
+    {
+      name: 'desert-festival-single-vendor-legacy',
+      request: request({
+        endSeed: 20_000,
+        useLegacyRandom: true,
+        desertFestivalCondition: { requireJas: false, requireLeah: true },
+      }),
+    },
+    {
+      name: 'mixed-date-boundaries',
+      request: request({
+        endSeed: 150_000,
+        weatherConditions: [{ season: 2, startDay: 27, endDay: 28, minRainDays: 1 }],
+        fairyConditions: [
+          { startYear: 1, startSeason: 2, startDay: 28, endYear: 2, endSeason: 0, endDay: 1, minOccurrences: 1 },
+        ],
+        cartConditions: [
+          cartCondition({ itemName: pickCartItem('椰子'), startYear: 1, startSeason: 3, startDay: 28, endYear: 2, endSeason: 0, endDay: 5 }),
+        ],
+      }),
+    },
+    {
+      name: 'mixed-all-features',
+      request: request({
+        endSeed: 150_000,
+        weatherConditions: [{ season: 0, startDay: 1, endDay: 28, minRainDays: 4 }],
+        fairyConditions: [
+          { startYear: 1, startSeason: 0, startDay: 1, endYear: 1, endSeason: 2, endDay: 28, minOccurrences: 1 },
+        ],
+        mineChestConditions: [{ floor: 110, itemName: '巨锤' }],
+        monsterLevelConditions: [
+          { startSeason: 0, endSeason: 0, startDay: 5, endDay: 5, startLevel: 1, endLevel: 40 },
+        ],
+        desertFestivalCondition: { requireJas: true, requireLeah: false },
+        cartConditions: [cartCondition({ itemName: pickCartItem('电池组'), startDay: 1, endDay: 28 })],
+      }),
+    },
+    {
+      name: 'mixed-all-features-legacy',
+      request: request({
+        endSeed: 150_000,
+        useLegacyRandom: true,
+        weatherConditions: [{ season: 1, startDay: 1, endDay: 28, minRainDays: 4 }],
+        fairyConditions: [
+          { startYear: 1, startSeason: 0, startDay: 1, endYear: 2, endSeason: 0, endDay: 28, minOccurrences: 1 },
+        ],
+        mineChestConditions: [{ floor: 10, itemName: '木剑' }],
+        monsterLevelConditions: [
+          { startSeason: 0, endSeason: 0, startDay: 5, endDay: 5, startLevel: 1, endLevel: 40 },
+        ],
+        desertFestivalCondition: { requireJas: false, requireLeah: true },
+        cartConditions: [cartCondition({ itemName: pickCartItem('红叶卷心菜'), startDay: 5, endSeason: 2, endDay: 28 })],
+      }),
+    },
+  ]
+}
+
+function pickCartItem(preferredName) {
+  return allCartItems.includes(preferredName) ? preferredName : allCartItems[0]
+}
+
+function cartCondition(overrides) {
+  return {
+    startYear: overrides.startYear ?? 1,
+    startSeason: overrides.startSeason ?? 0,
+    startDay: overrides.startDay ?? 5,
+    endYear: overrides.endYear ?? overrides.startYear ?? 1,
+    endSeason: overrides.endSeason ?? overrides.startSeason ?? 0,
+    endDay: overrides.endDay ?? 5,
+    itemName: overrides.itemName,
+    requireQty5: Boolean(overrides.requireQty5),
+    minOccurrences: overrides.minOccurrences ?? 1,
   }
 }
 
@@ -357,8 +646,9 @@ import { createServer } from ${JSON.stringify(pathToFileURL(resolve(projectRoot,
 
 const server = await createServer({
   root: ${JSON.stringify(projectRoot)},
+  configFile: false,
   logLevel: 'error',
-  server: { middlewareMode: true },
+  server: { middlewareMode: true, hmr: false, ws: false },
   appType: 'custom',
 })
 
@@ -667,14 +957,14 @@ async function main() {
     if (failures.length > 0) {
       process.stderr.write(`${JSON.stringify({ failures }, null, 2)}\n`)
       process.stderr.write(
-        `Parity sampling failed for ${failures.length}/${cases.length} cases. Reproduce one case with --seed ${failures[0].samplerSeed} --case-index ${failures[0].caseIndex} --window ${options.window} --output-limit ${options.outputLimit}.\n`,
+        `Parity sampling failed for ${failures.length}/${cases.length} cases. Reproduce one case with --seed ${failures[0].samplerSeed} --profile ${options.profile} --cases ${options.cases} --case-index ${failures[0].caseIndex} --window ${options.window} --output-limit ${options.outputLimit}.\n`,
       )
       process.exitCode = 1
       return
     }
 
     console.log(
-      `Parity sampling passed: ${cases.length} cases, sampler seed ${options.seed}, window <= ${options.window}, upstream ${upstreamCommit}.`,
+      `Parity sampling passed: ${cases.length} cases, profile ${options.profile}, sampler seed ${options.seed}, window <= ${options.window}, upstream ${upstreamCommit}.`,
     )
   } finally {
     rmSync(tempDir, { recursive: true, force: true })

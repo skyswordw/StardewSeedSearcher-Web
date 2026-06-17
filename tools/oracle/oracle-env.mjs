@@ -72,6 +72,10 @@ function prepareUpstream() {
       run('git', ['checkout', '--detach', upstreamCommit], { cwd: upstreamDir })
       return
     } catch {
+      if (localHeadMatches(upstreamDir, upstreamCommit)) {
+        run('git', ['checkout', '--detach', upstreamCommit], { cwd: upstreamDir })
+        return
+      }
       rmSync(upstreamDir, { recursive: true, force: true })
     }
   }
@@ -95,6 +99,15 @@ function prepareUpstream() {
   run('git', ['clone', '--depth', '1', upstreamUrl, upstreamDir])
   run('git', ['fetch', '--depth', '1', 'origin', upstreamCommit], { cwd: upstreamDir })
   run('git', ['checkout', '--detach', upstreamCommit], { cwd: upstreamDir })
+}
+
+function localHeadMatches(repositoryDir, commit) {
+  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
+    cwd: repositoryDir,
+    encoding: 'utf8',
+    env: dotnetEnv(),
+  })
+  return result.status === 0 && result.stdout.trim() === commit
 }
 
 function withUpstreamLock(callback) {

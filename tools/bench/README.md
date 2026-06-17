@@ -19,12 +19,12 @@ The runner writes JSON to stdout so results can be archived or compared by other
 
 Each scenario reports per-run elapsed time, seeds per second, checked/found counts, progress event count, first progress latency, cancel latency where applicable, and median/p95 summaries.
 
-## Worker Pool Follow-Up Constraints
+## Worker Pool Comparison
 
-This benchmark intentionally does not implement a worker pool. Use these constraints before introducing one:
+Use `--compare-pool` to run each synchronous scenario twice: once through the single-threaded search baseline and once through a Node `worker_threads` pool that uses the same seed chunking thresholds as the browser worker pool:
 
-- Preserve the current single-search semantics first: same normalized request, same output ordering, same `outputLimit`, and same found details.
-- Keep progress monotonic across shards. A pool-level aggregator must never emit a lower checked count or percent than a prior progress event.
-- Cancellation latency must stay measurable. Pool cancellation should abort queued work and active shards, then report a complete message with `cancelled: true`.
-- Avoid unbounded message volume. Aggregate progress on a fixed cadence or checked-count interval instead of forwarding every shard event directly.
-- Keep deterministic benchmark coverage. Add pooled variants beside these scenarios and compare against the single-core baseline before changing production defaults.
+```sh
+npm run bench:search -- --scenario upstream-feedback-mixed-heavy --range 10k --repeat 3 --compare-pool
+```
+
+The pooled benchmark is a Linux throughput baseline for heavy searches. It is not a browser UI latency measurement, because worker startup and Vite SSR loading differ from Vite's bundled Web Worker path.

@@ -19,6 +19,7 @@ export function formatStatus(status: SearchStatus, t: AppCopy): string {
   if (status.type === 'stopping') return t.stopping
   if (status.type === 'stopped') return t.stopped(status.totalFound)
   if (status.type === 'completed') return t.completed(status.totalFound)
+  if (status.type === 'failed') return status.message
   if (status.type === 'copyFailed') return t.copyFailed
   return t.idleStatus
 }

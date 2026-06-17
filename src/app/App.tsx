@@ -11,6 +11,7 @@ import './App.css'
 import logo from '../assets/logo.png'
 import { copy, localeNames, type Locale } from '../i18n'
 import { copyTextToClipboard, createJobId, randomInt } from '../runtime/browserCompat'
+import { SearchWorkerPool, type SearchPoolMessage } from '../runtime/searchWorkerPool'
 import {
   allCartItemNames,
   mineChestFloors,
@@ -20,7 +21,6 @@ import {
   type FairyCondition,
   type MineChestCondition,
   type MonsterLevelCondition,
-  type SearchMessage,
   type SearchRequest,
   type WeatherCondition,
 } from '../search-core'
@@ -89,9 +89,16 @@ function App() {
   const [activeRange, setActiveRange] = useState<{ start: number; end: number } | null>(null)
   const [stoppedEarly, setStoppedEarly] = useState<boolean | null>(null)
 
-  const workerRef = useRef<Worker | null>(null)
+  const workerPoolRef = useRef<SearchWorkerPool | null>(null)
   const activeJobId = useRef<string | null>(null)
   const savedStartSeed = useRef(1)
+
+  useEffect(() => {
+    return () => {
+      workerPoolRef.current?.dispose()
+      workerPoolRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     document.documentElement.lang = locale === 'en' ? 'en' : 'zh-CN'
@@ -147,8 +154,8 @@ function App() {
     }
 
     const request = buildRequest()
-    const worker = workerRef.current ?? new Worker(new URL('../workers/search.worker.ts', import.meta.url), { type: 'module' })
-    workerRef.current = worker
+    const workerPool = workerPoolRef.current ?? new SearchWorkerPool()
+    workerPoolRef.current = workerPool
     const jobId = createJobId()
     activeJobId.current = jobId
     savedStartSeed.current = startSeed
@@ -166,26 +173,30 @@ function App() {
     setSearchStatus({ type: 'searching', start: request.startSeed, end: request.endSeed })
     setIsSearching(true)
 
-    worker.onmessage = (event: MessageEvent<SearchMessage & { jobId: string; message?: string }>) => {
-      if (event.data.jobId !== activeJobId.current) return
-      handleWorkerMessage(event.data, request)
-    }
-
-    worker.postMessage({ type: 'start-search', jobId, request })
+    workerPool.startSearch(request, jobId, (message) => {
+      if (jobId !== activeJobId.current) return
+      handleWorkerMessage(message, request)
+    })
   }
 
   function stopSearch() {
-    workerRef.current?.postMessage({ type: 'cancel-search', jobId: activeJobId.current })
     setSearchStatus({ type: 'stopping' })
+    workerPoolRef.current?.cancelSearch(activeJobId.current)
   }
 
   function setRandomStartSeed() {
     setStartSeed(randomInt(1_000_000_000) + 1)
   }
 
-  function handleWorkerMessage(message: SearchMessage & { message?: string }, request: SearchRequest) {
+  function handleWorkerMessage(message: SearchPoolMessage, request: SearchRequest) {
     if (message.type === 'start') {
       setTotalCount(message.total)
+      return
+    }
+    if (message.type === 'error') {
+      setSearchStatus({ type: 'failed', message: message.message })
+      setIsSearching(false)
+      activeJobId.current = null
       return
     }
     if (message.type === 'progress') {
@@ -205,6 +216,7 @@ function App() {
       setSearchStatus(message.cancelled ? { type: 'stopped', totalFound: message.totalFound } : { type: 'completed', totalFound: message.totalFound })
       setIsSearching(false)
       setStoppedEarly(!message.cancelled && message.totalFound >= request.outputLimit)
+      activeJobId.current = null
       if (searchRange === 'max') {
         setStartSeed(message.cancelled ? savedStartSeed.current : 1)
       } else if (!message.cancelled && loopSearch) {

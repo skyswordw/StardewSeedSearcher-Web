@@ -1,15 +1,19 @@
 #!/usr/bin/env node
 
 import { performance } from 'node:perf_hooks'
+import { availableParallelism } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { Worker } from 'node:worker_threads'
 import { createServer } from 'vite'
 
 const DEFAULT_RANGE = 1_000_000
 const DEFAULT_REPEAT = 3
+const DEFAULT_MAX_POOL_WORKERS = 8
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const root = resolve(scriptDir, '../..')
+const poolWorkerPath = resolve(scriptDir, 'search-pool-worker.mjs')
 
 function baseRequest({ startSeed, endSeed, range, outputLimit = range + 1 }) {
   return {
@@ -186,6 +190,8 @@ Options:
   --range <count>     Number of seeds per run. Supports k/m suffixes. Default: 1m.
   --start <seed>      First seed. Default: 1.
   --repeat <count>    Runs per scenario. Default: 3.
+  --compare-pool      Run sync baseline plus a Node worker_threads pool variant for sync scenarios.
+  --pool-workers <n>  Worker count for --compare-pool. Defaults to min(8, available cores - 1).
   --list              Print scenario names as JSON.
   --help              Show this help.
 `
@@ -197,6 +203,8 @@ function parseArgs(argv) {
     range: DEFAULT_RANGE,
     repeat: DEFAULT_REPEAT,
     startSeed: 1,
+    comparePool: false,
+    poolWorkers: null,
     list: false,
     help: false,
   }
@@ -219,6 +227,12 @@ function parseArgs(argv) {
       const value = argv[++index]
       if (!value) throw new Error('--repeat requires a value')
       options.repeat = parseCount(value)
+    } else if (arg === '--compare-pool') {
+      options.comparePool = true
+    } else if (arg === '--pool-workers') {
+      const value = argv[++index]
+      if (!value) throw new Error('--pool-workers requires a value')
+      options.poolWorkers = parseCount(value)
     } else if (arg === '--start') {
       const value = argv[++index]
       if (!value) throw new Error('--start requires a value')
@@ -231,6 +245,7 @@ function parseArgs(argv) {
   if (options.range < 1) throw new Error('--range must be at least 1')
   if (options.repeat < 1) throw new Error('--repeat must be at least 1')
   if (options.startSeed < 1) throw new Error('--start must be at least 1')
+  if (options.poolWorkers !== null && options.poolWorkers < 1) throw new Error('--pool-workers must be at least 1')
 
   const available = Object.keys(scenarioDefinitions)
   const requested = options.scenarioNames.length > 0 ? options.scenarioNames : available
@@ -258,7 +273,7 @@ async function loadSearchCore() {
     configFile: false,
     logLevel: 'silent',
     appType: 'custom',
-    server: { middlewareMode: true },
+    server: { middlewareMode: true, hmr: false, ws: false },
   })
 
   try {
@@ -343,6 +358,159 @@ async function runScenario(name, definition, core) {
   return recorder.finish(performance.now(), seeds)
 }
 
+async function runNodeWorkerPoolScenario(definition, poolWorkers) {
+  if (definition.mode !== 'sync') {
+    throw new Error('Node worker pool benchmark only supports sync scenarios')
+  }
+
+  const startedAt = performance.now()
+  const workerCount = selectPoolWorkerCount(definition.request, poolWorkers)
+  const chunks = createSeedChunks(definition.request, workerCount)
+  const workers = await createNodePool(workerCount)
+  const foundSeeds = []
+  let checkedCount = 0
+  let nextChunkIndex = 0
+  let completedChunks = 0
+
+  try {
+    await new Promise((resolvePromise, rejectPromise) => {
+      const cleanup = () => {
+        for (const worker of workers) {
+          worker.removeAllListeners('message')
+          worker.removeAllListeners('error')
+          worker.removeAllListeners('exit')
+        }
+      }
+
+      const assign = (worker) => {
+        if (nextChunkIndex >= chunks.length) return
+        const chunk = chunks[nextChunkIndex]
+        nextChunkIndex += 1
+        worker.postMessage({
+          type: 'run',
+          chunkIndex: chunk.index,
+          request: {
+            ...definition.request,
+            startSeed: chunk.startSeed,
+            endSeed: chunk.endSeed,
+          },
+        })
+      }
+
+      for (const worker of workers) {
+        worker.on('message', (message) => {
+          if (message.type !== 'result') return
+          checkedCount += message.checkedCount
+          foundSeeds.push(...message.foundSeeds)
+          completedChunks += 1
+          if (completedChunks >= chunks.length) {
+            cleanup()
+            resolvePromise()
+            return
+          }
+          assign(worker)
+        })
+        worker.on('error', (error) => {
+          cleanup()
+          rejectPromise(error)
+        })
+        worker.on('exit', (code) => {
+          if (code !== 0 && completedChunks < chunks.length) {
+            cleanup()
+            rejectPromise(new Error(`Pool worker exited with code ${code}`))
+          }
+        })
+      }
+
+      for (const worker of workers) assign(worker)
+    })
+  } finally {
+    await Promise.allSettled(workers.map((worker) => worker.terminate()))
+  }
+
+  const elapsedMs = performance.now() - startedAt
+  const sortedFoundSeeds = foundSeeds.sort((a, b) => a - b).slice(0, definition.request.outputLimit)
+  return {
+    elapsedMs: round(elapsedMs, 3),
+    elapsedSeconds: round(elapsedMs / 1000, 6),
+    seedsPerSec: elapsedMs > 0 ? Math.round((checkedCount / elapsedMs) * 1000) : 0,
+    checkedCount,
+    foundCount: sortedFoundSeeds.length,
+    progressEventCount: 0,
+    firstProgressLatencyMs: null,
+    cancelLatencyMs: null,
+    cancelled: false,
+    workerCount,
+  }
+}
+
+async function createNodePool(workerCount) {
+  const workers = []
+  try {
+    for (let index = 0; index < workerCount; index += 1) {
+      workers.push(await createNodePoolWorker())
+    }
+    return workers
+  } catch (error) {
+    await Promise.allSettled(workers.map((worker) => worker.terminate()))
+    throw error
+  }
+}
+
+function createNodePoolWorker() {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const worker = new Worker(poolWorkerPath, { workerData: { root } })
+    const cleanup = () => {
+      worker.off('message', onMessage)
+      worker.off('error', onError)
+      worker.off('exit', onExit)
+    }
+    const onMessage = (message) => {
+      if (message.type !== 'ready') return
+      cleanup()
+      resolvePromise(worker)
+    }
+    const onError = (error) => {
+      cleanup()
+      rejectPromise(error)
+    }
+    const onExit = (code) => {
+      cleanup()
+      rejectPromise(new Error(`Pool worker exited before ready with code ${code}`))
+    }
+
+    worker.on('message', onMessage)
+    worker.on('error', onError)
+    worker.on('exit', onExit)
+  })
+}
+
+function selectPoolWorkerCount(request, requestedWorkers) {
+  const total = request.endSeed - request.startSeed + 1
+  const hardwareLimit = Math.max(1, availableParallelism() - 1)
+  const maxWorkers = Math.max(1, Math.min(DEFAULT_MAX_POOL_WORKERS, requestedWorkers ?? DEFAULT_MAX_POOL_WORKERS, hardwareLimit))
+  const rangeLimit = total >= 10_000_000 ? 8 : total >= 1_000_000 ? 4 : total >= 250_000 ? 2 : 1
+  return Math.max(1, Math.min(maxWorkers, rangeLimit))
+}
+
+function createSeedChunks(request, workerCount) {
+  const total = request.endSeed - request.startSeed + 1
+  if (total <= 0) return []
+
+  const chunkSize =
+    workerCount <= 1
+      ? total
+      : Math.min(1_000_000, Math.max(50_000, Math.ceil(total / Math.max(1, workerCount * 8))))
+  const chunks = []
+
+  for (let startSeed = request.startSeed; startSeed <= request.endSeed; startSeed += chunkSize) {
+    const endSeed = Math.min(request.endSeed, startSeed + chunkSize - 1)
+    chunks.push({ index: chunks.length, startSeed, endSeed })
+  }
+
+  return chunks
+}
+
 function summarizeRuns(runs) {
   return {
     elapsedMs: summarize(runs.map((run) => run.elapsedMs)),
@@ -352,6 +520,7 @@ function summarizeRuns(runs) {
     progressEventCount: summarize(runs.map((run) => run.progressEventCount)),
     firstProgressLatencyMs: summarize(runs.map((run) => run.firstProgressLatencyMs).filter((value) => value !== null)),
     cancelLatencyMs: summarize(runs.map((run) => run.cancelLatencyMs).filter((value) => value !== null)),
+    workerCount: summarize(runs.map((run) => run.workerCount).filter((value) => value !== undefined)),
   }
 }
 
@@ -400,21 +569,31 @@ async function main() {
         endSeed,
         range: options.range,
       })
-      const runs = []
-      for (let runIndex = 0; runIndex < options.repeat; runIndex += 1) {
-        runs.push(await runScenario(name, definition, core))
+      const modes = [{ name: definition.mode, run: () => runScenario(name, definition, core) }]
+      if (options.comparePool && definition.mode === 'sync') {
+        modes.push({
+          name: 'node-worker-pool',
+          run: () => runNodeWorkerPoolScenario(definition, options.poolWorkers),
+        })
       }
 
-      scenarioResults.push({
-        name,
-        mode: definition.mode,
-        range: options.range,
-        startSeed: options.startSeed,
-        endSeed,
-        repeat: options.repeat,
-        runs,
-        summary: summarizeRuns(runs),
-      })
+      for (const mode of modes) {
+        const runs = []
+        for (let runIndex = 0; runIndex < options.repeat; runIndex += 1) {
+          runs.push(await mode.run())
+        }
+
+        scenarioResults.push({
+          name,
+          mode: mode.name,
+          range: options.range,
+          startSeed: options.startSeed,
+          endSeed,
+          repeat: options.repeat,
+          runs,
+          summary: summarizeRuns(runs),
+        })
+      }
     }
 
     process.stdout.write(
@@ -423,7 +602,7 @@ async function main() {
           tool: 'search-benchmark',
           version: 1,
           generatedAt: new Date().toISOString(),
-          workerPool: false,
+          workerPool: options.comparePool,
           scenarios: scenarioResults,
         },
         null,
