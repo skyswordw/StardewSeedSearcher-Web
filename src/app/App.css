@@ -406,6 +406,37 @@ select:focus {
   top: 20px;
 }
 
+.results-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+
+.results-heading h2 {
+  margin: 0;
+  color: var(--wood-dark);
+}
+
+.results-panel .results-heading h2 {
+  margin: 0;
+}
+
+.results-heading p {
+  margin: 5px 0 0;
+  color: #245d78;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.results-export {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .results-panel h2,
 .results-panel h3 {
   margin: 0 0 12px;
@@ -487,12 +518,79 @@ select:focus {
   margin-top: 14px;
 }
 
-.analysis-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px dashed rgba(91, 69, 45, 0.18);
-  padding: 8px 0;
+.analysis-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.analysis-summary-item {
+  border: 1px solid rgba(91, 69, 45, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.42);
+  padding: 10px;
+}
+
+.analysis-summary-item span {
+  display: block;
+  color: #806f58;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.analysis-summary-item strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--wood-dark);
+  font-size: 15px;
+}
+
+.analysis-table {
+  display: grid;
+  border: 1px solid rgba(91, 69, 45, 0.16);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.analysis-table-head,
+.analysis-table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 76px;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 10px;
+}
+
+.analysis-table-head {
+  background: rgba(79, 145, 178, 0.12);
+  color: #245d78;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.analysis-table-row {
+  border-top: 1px dashed rgba(91, 69, 45, 0.16);
+  color: #4e412f;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.analysis-table-row strong {
+  color: var(--wood-dark);
+}
+
+.rate-pill {
+  justify-self: end;
+  min-width: 54px;
+  border-radius: 6px;
+  background: rgba(47, 122, 79, 0.12);
+  color: var(--leaf-dark);
+  padding: 4px 6px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 950;
 }
 
 .muted,
@@ -657,5 +755,28 @@ select:focus {
   .feature-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .results-heading {
+    flex-direction: column;
+  }
+
+  .results-export {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .analysis-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-table-head,
+  .analysis-table-row {
+    grid-template-columns: minmax(0, 1fr) minmax(82px, auto);
+  }
+
+  .analysis-table-head span:nth-child(3),
+  .analysis-table-row .rate-pill {
+    display: none;
   }
 }

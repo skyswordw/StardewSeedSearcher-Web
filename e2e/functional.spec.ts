@@ -20,6 +20,9 @@ test.describe('functional UI coverage', () => {
     await openApp(page)
 
     await expect(page.getByTestId('connection-status')).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: '搜索结果' })).toBeVisible()
+    await expect(page.getByText('种子范围: 1-100,000')).toBeVisible()
+    await expect(page.getByTestId('search-analysis')).toContainText('搜索分析')
     await expect(page.getByTestId('status-message')).toHaveText('等待搜索')
     await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
     await expect(page.getByText('暂无结果')).toBeVisible()
@@ -120,10 +123,13 @@ test.describe('functional UI coverage', () => {
     await configureTinySeedRange(page)
 
     await startSearch(page)
-    await waitForRunningState(page)
     await waitForCompleteState(page)
 
     await expect(page.getByRole('button', { name: /导出所有种子号/ })).toBeEnabled()
+    await expect(page.getByTestId('search-analysis')).toContainText('通过筛选')
+    await expect(page.getByTestId('search-analysis')).toContainText('12个种子')
+    await expect(page.getByTestId('search-analysis')).toContainText('天气筛选')
+    await expect(page.getByTestId('search-analysis')).toContainText('24%')
     await expect(resultRows(page)).toHaveCount(1)
     await expect(resultRows(page).first()).toContainText('种子: 123456')
 

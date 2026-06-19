@@ -17,6 +17,7 @@ export const dynamicScreenshotMasks = (page: Page) => [
   page.getByTestId('status-message'),
   page.getByTestId('progress'),
   page.getByTestId('metric-grid'),
+  page.getByTestId('search-analysis'),
 ]
 
 export async function openApp(page: Page, options: { mockWorker?: boolean } = {}) {

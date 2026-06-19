@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   BookOpen,
-  Download,
   Info,
   Search,
   Square,
@@ -114,7 +113,8 @@ function App() {
   }, [searchRange, startSeed])
 
   const statusMessage = useMemo(() => formatStatus(searchStatus, t), [searchStatus, t])
-  const rangeBadge = activeRange ? t.rangeBadge(activeRange.start.toLocaleString(), activeRange.end.toLocaleString()) : ''
+  const displayRange = activeRange ?? { start: startSeed, end: calculatedRange.endSeed }
+  const rangeBadge = t.rangeBadge(displayRange.start.toLocaleString(), displayRange.end.toLocaleString())
 
   function validate(): string | null {
     if (!Number.isFinite(startSeed) || startSeed < 1 || startSeed > INT_MAX) return t.validation.startSeed(INT_MAX)
@@ -241,9 +241,10 @@ function App() {
   }
 
   function exportResults() {
+    const exportRange = activeRange ?? { start: startSeed, end: calculatedRange.endSeed }
     const content = [
       t.exportLines.title,
-      t.exportLines.range(startSeed, calculatedRange.endSeed),
+      t.exportLines.range(exportRange.start, exportRange.end),
       t.exportLines.legacy(useLegacyRandom),
       t.exportLines.found(foundSeeds.length),
       '',
@@ -495,9 +496,6 @@ function App() {
               {isSearching ? <Square size={18} /> : <Search size={18} />}
               {isSearching ? t.stopSearch : t.startSearch}
             </button>
-            <button type="button" className="secondary" onClick={exportResults} disabled={foundSeeds.length === 0}>
-              <Download size={18} /> {t.exportSeeds}
-            </button>
           </div>
         </section>
 
@@ -513,6 +511,7 @@ function App() {
           elapsed={elapsed}
           stoppedEarly={stoppedEarly}
           featureStats={featureStats}
+          onExportResults={exportResults}
           onSelectSeed={setSelectedSeed}
           onCopySeed={(seed) => {
             void copySeed(seed)
